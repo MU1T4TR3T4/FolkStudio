@@ -35,6 +35,8 @@ export default function EditorPage() {
         rotation: 0,
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [iaPreviewUrl, setIaPreviewUrl] = useState<string | null>(null);
+    const [isGeneratingIA, setIsGeneratingIA] = useState(false);
 
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -109,16 +111,6 @@ export default function EditorPage() {
             ctx.drawImage(mockupImg, 0, 0);
 
             // 2. Calcular proporção entre a tela de edição e o tamanho real da imagem do mockup
-            // A área de visualização tem aspect ratio fixo, mas precisamos mapear as coordenadas relativas
-            // Vamos assumir que a área de visualização (container) mapeia para o tamanho total do mockup
-            // Precisamos saber o tamanho do container na tela para calcular a escala relativa
-            // Como não temos acesso direto ao DOM do container aqui de forma fácil, vamos usar uma aproximação baseada em percentual
-
-            // O container visual tem width fixo relativo ao aspect ratio.
-            // Vamos considerar que as coordenadas x,y do design são relativas a um container de 400x500 (exemplo do placeholder anterior)
-            // Mas o mockup real pode ser muito maior (ex: 1000x1000).
-            // Melhor abordagem: Usar coordenadas relativas (%)
-
             // Simplificação: Vamos assumir um container base de referência de 400px de largura (tamanho visual aproximado)
             const visualScale = canvas.width / 400;
 
@@ -183,7 +175,7 @@ export default function EditorPage() {
 
         setIsSaving(true);
         try {
-            const finalImageUrl = await generateCanvasImage();
+            const finalImageUrl = iaPreviewUrl || await generateCanvasImage();
 
             if (!finalImageUrl) {
                 throw new Error("Falha ao gerar imagem");
@@ -202,7 +194,7 @@ export default function EditorPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    previewUrl: finalImageUrl, // Agora enviamos a imagem gerada no canvas como preview
+                    previewUrl: finalImageUrl, // Usa a imagem da IA se existir, senão usa o Canvas
                     designUrl: originalDesignBase64,
                     model,
                     color
@@ -223,6 +215,51 @@ export default function EditorPage() {
             setIsSaving(false);
         }
     };
+
+    async function handleGenerateIAMockup() {
+        if (!image) {
+            toast.error("Por favor, faça upload de uma estampa primeiro.");
+            return;
+        }
+
+        setIsGeneratingIA(true);
+        setIaPreviewUrl(null);
+
+        try {
+            // Converter imagem para Base64
+            const response = await fetch(image);
+            const blob = await response.blob();
+            const reader = new FileReader();
+            const base64Image = await new Promise<string>((resolve) => {
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+            });
+
+            const res = await fetch("/api/generate-mockup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    logoBase64: base64Image,
+                    modelo: model,
+                    cor: color,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (data.status === "success" && data.resultUrl) {
+                setIaPreviewUrl(data.resultUrl);
+                toast.success("Mockup realista gerado com sucesso!");
+            } else {
+                throw new Error(data.message || "Erro ao gerar mockup.");
+            }
+        } catch (error: any) {
+            console.error("Erro IA:", error);
+            toast.error("Falha na geração com IA: " + error.message);
+        } finally {
+            setIsGeneratingIA(false);
+        }
+    }
 
     const colorMap: Record<TShirtColor, string> = {
         white: "#ffffff",
@@ -332,32 +369,87 @@ export default function EditorPage() {
                         </div>
                     </div>
 
+                    {/* Prévia Gerada por IA */}
+                    {iaPreviewUrl && (
+                        <div className="mt-4 border rounded-xl p-4 bg-purple-50 animate-in fade-in slide-in-from-bottom-4 duration-500 border-purple-100">
+                            <h3 className="text-sm font-semibold mb-3 text-purple-900 flex items-center gap-2">
+                                <Wand2 className="h-4 w-4 text-purple-600" />
+                                Mockup Realista (IA)
+                            </h3>
+                            <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-purple-200 bg-white">
+                                <img
+                                    src={iaPreviewUrl}
+                                    alt="Mockup IA"
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                                <Button
+                                    onClick={() => {
+                                        const link = document.createElement("a");
+                                        link.href = iaPreviewUrl;
+                                        link.download = `mockup-ia-${model}-${color}.png`;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                    }}
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 border-purple-200 text-purple-700 hover:bg-purple-100"
+                                >
+                                    <Download className="h-3 w-3 mr-2" />
+                                    Baixar
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex-1"></div>
 
                     {/* Ações Finais */}
                     <div className="space-y-3 pt-6 border-t border-gray-100">
                         <Button
-                            onClick={handleDownload}
-                            disabled={!image}
-                            variant="outline"
-                            className="w-full flex items-center justify-center gap-2"
+                            onClick={handleGenerateIAMockup}
+                            disabled={isGeneratingIA || !image}
+                            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all hover:scale-[1.02]"
                         >
-                            <Download className="h-4 w-4" />
-                            Baixar PNG
+                            {isGeneratingIA ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Gerando com IA...
+                                </>
+                            ) : (
+                                <>
+                                    <Wand2 className="h-4 w-4" />
+                                    Gerar Mockup Realista com IA
+                                </>
+                            )}
                         </Button>
 
-                        <Button
-                            onClick={handleSaveOrder}
-                            disabled={isSaving || !image}
-                            className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white"
-                        >
-                            {isSaving ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <Save className="h-4 w-4" />
-                            )}
-                            Salvar no Dashboard
-                        </Button>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button
+                                onClick={handleDownload}
+                                disabled={!image}
+                                variant="outline"
+                                className="w-full flex items-center justify-center gap-2"
+                            >
+                                <Download className="h-4 w-4" />
+                                Canvas PNG
+                            </Button>
+
+                            <Button
+                                onClick={handleSaveOrder}
+                                disabled={isSaving || !image}
+                                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                            >
+                                {isSaving ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Save className="h-4 w-4" />
+                                )}
+                                Salvar no Dashboard
+                            </Button>
+                        </div>
                     </div>
 
                 </div>
