@@ -1,6 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 
 const prismaClientSingleton = () => {
+    // Durante o build, retorna um mock para evitar erros de conexão
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+        return {} as PrismaClient;
+    }
     return new PrismaClient();
 };
 
