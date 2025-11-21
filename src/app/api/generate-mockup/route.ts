@@ -5,9 +5,8 @@ import path from "path";
 import fs from "fs";
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Aumentar timeout para 60s
+export const maxDuration = 60;
 
-// Mapeamento de arquivos de mockup
 const MOCKUP_FILES: Record<string, Record<string, string>> = {
     short: {
         white: "camiseta-manga-curta-branca.png",
@@ -33,7 +32,7 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { logoBase64, modelo, cor } = body;
+        const { logoBase64, modelo, cor, design } = body;
 
         if (!logoBase64 || !modelo || !cor) {
             return NextResponse.json(
@@ -42,7 +41,6 @@ export async function POST(req: Request) {
             );
         }
 
-        // 1. Identificar arquivo de mockup
         const mockupFileName = MOCKUP_FILES[modelo]?.[cor];
         if (!mockupFileName) {
             return NextResponse.json(
@@ -62,33 +60,57 @@ export async function POST(req: Request) {
         }
 
         console.log(`[generate-mockup] Using mockup: ${mockupFileName}`);
+        console.log(`[generate-mockup] Design params:`, design);
 
-        // 2. Compor imagem com node-canvas
+        // Compor imagem com node-canvas
         const mockupImage = await loadImage(mockupPath);
         const logoImage = await loadImage(logoBase64);
 
         const canvas = createCanvas(mockupImage.width, mockupImage.height);
         const ctx = canvas.getContext("2d");
 
-        // Desenhar mockup
         ctx.drawImage(mockupImage, 0, 0);
 
-        // Calcular posição e tamanho da logo (Centralizado no peito)
-        const logoWidth = mockupImage.width * 0.35;
-        const logoHeight = (logoImage.height / logoImage.width) * logoWidth;
+        // Escala do editor visual (400x500px) para o tamanho real do mockup
+        const visualScale = mockupImage.width / 400;
 
-        const logoX = (mockupImage.width - logoWidth) / 2;
-        const logoY = mockupImage.height * 0.25;
+        let logoX, logoY, logoWidth, logoHeight, rotation;
 
-        // Desenhar logo
+        if (design && design.x !== undefined) {
+            // Usar valores customizados do editor
+            logoX = design.x * visualScale;
+            logoY = design.y * visualScale;
+            logoWidth = design.width * visualScale;
+            logoHeight = design.height * visualScale;
+            rotation = design.rotation || 0;
+            console.log(`[generate-mockup] Custom position: x=${logoX.toFixed(1)}, y=${logoY.toFixed(1)}, w=${logoWidth.toFixed(1)}, h=${logoHeight.toFixed(1)}, rot=${rotation}°`);
+        } else {
+            // Fallback: centralizado
+            logoWidth = mockupImage.width * 0.35;
+            logoHeight = (logoImage.height / logoImage.width) * logoWidth;
+            logoX = (mockupImage.width - logoWidth) / 2;
+            logoY = mockupImage.height * 0.25;
+            rotation = 0;
+            console.log(`[generate-mockup] Default centered position`);
+        }
+
+        ctx.save();
+
+        if (rotation !== 0) {
+            const centerX = logoX + logoWidth / 2;
+            const centerY = logoY + logoHeight / 2;
+            ctx.translate(centerX, centerY);
+            ctx.rotate((rotation * Math.PI) / 180);
+            ctx.translate(-centerX, -centerY);
+        }
+
         ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
+        ctx.restore();
 
-        // Converter para Base64
         const compositeBase64 = canvas.toDataURL("image/png");
 
         console.log("[generate-mockup] Composition created. Sending to Replicate...");
 
-        // 3. Enviar para Replicate
         const replicate = new Replicate({
             auth: process.env.REPLICATE_API_TOKEN,
         });
@@ -97,14 +119,15 @@ export async function POST(req: Request) {
             "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
             {
                 input: {
-                    prompt: "t-shirt realistic mockup, studio lighting, high detail, crisp textile textures, photorealistic, 8k",
+                    prompt: "professional t-shirt product photography, studio lighting, realistic fabric texture, keep the original logo design exactly as is, photorealistic mockup, high quality, 8k",
+                    negative_prompt: "distorted logo, changed design, different colors, blurry, low quality, deformed",
                     image: compositeBase64,
-                    strength: 0.75,
+                    strength: 0.35,
                     refine: "expert_ensemble_refiner",
                     scheduler: "K_EULER",
                     lora_scale: 0.6,
-                    num_inference_steps: 25,
-                    guidance_scale: 7.5
+                    num_inference_steps: 30,
+                    guidance_scale: 8.5
                 }
             } as any
         );
@@ -120,7 +143,6 @@ export async function POST(req: Request) {
 
         console.log("[generate-mockup] Downloading image and converting to Base64...");
 
-        // Baixar a imagem e converter para Base64 (solução definitiva)
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 25000);
@@ -149,7 +171,6 @@ export async function POST(req: Request) {
         } catch (fetchError: any) {
             console.error("[generate-mockup] ⚠️ Failed to download image:", fetchError.message);
 
-            // Fallback: retornar URL original
             return NextResponse.json({
                 status: "success",
                 resultUrl: resultUrl,

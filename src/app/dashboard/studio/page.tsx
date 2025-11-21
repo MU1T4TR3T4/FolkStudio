@@ -242,6 +242,7 @@ export default function EditorPage() {
                     logoBase64: base64Image,
                     modelo: model,
                     cor: color,
+                    design: design // Enviar posição e tamanho customizados
                 }),
             });
 
