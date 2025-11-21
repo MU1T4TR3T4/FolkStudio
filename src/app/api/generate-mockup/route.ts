@@ -119,10 +119,23 @@ export async function POST(req: Request) {
             resultUrl = String(output);
         }
 
+        console.log("[generate-mockup] Fetching image from Replicate to convert to Base64...");
+
+        // Baixar a imagem do Replicate para converter em Base64
+        // Isso evita problemas de CORS e 404 no frontend (especialmente em Vercel/Download)
+        const imageResponse = await fetch(resultUrl);
+        if (!imageResponse.ok) {
+            throw new Error(`Failed to fetch image from Replicate: ${imageResponse.statusText}`);
+        }
+
+        const arrayBuffer = await imageResponse.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64Image = `data:image/png;base64,${buffer.toString('base64')}`;
+
         return NextResponse.json({
             status: "success",
-            resultUrl: resultUrl,
-            previewBase64: compositeBase64 // Retorna também a composição original para comparação
+            resultUrl: base64Image, // Agora retorna o Base64 completo
+            previewBase64: compositeBase64
         });
 
     } catch (error: any) {
