@@ -14,24 +14,22 @@ interface UserState {
     fetchUser: () => Promise<void>;
 }
 
+// Usuário demo fixo para apresentação
+const DEMO_USER: User = {
+    id: "demo-user",
+    name: "Demonstração",
+    email: "demo@demo.com"
+};
+
 export const useUser = create<UserState>()(
     persist(
         (set) => ({
-            user: null,
+            user: DEMO_USER, // Sempre retorna o usuário demo
             setUser: (user) => set({ user }),
-            clearUser: () => set({ user: null }),
+            clearUser: () => set({ user: DEMO_USER }), // Mesmo ao limpar, retorna demo
             fetchUser: async () => {
-                try {
-                    const res = await fetch('/api/auth/me');
-                    const data = await res.json();
-                    if (data.status === 'success') {
-                        set({ user: data.data.user });
-                    } else {
-                        set({ user: null });
-                    }
-                } catch (error) {
-                    set({ user: null });
-                }
+                // Não faz fetch, apenas define o usuário demo
+                set({ user: DEMO_USER });
             },
         }),
         {

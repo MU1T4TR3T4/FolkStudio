@@ -1,22 +1,13 @@
 import React from 'react';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { Sidebar } from "@/components/ui/Sidebar";
 import { Header } from "@/components/ui/Header";
-import { verifyToken } from '@/lib/auth';
 
-export default async function DashboardLayout({
+// Autenticação desativada para demonstração
+export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
-
-    if (!token || !verifyToken(token)) {
-        redirect('/login');
-    }
-
     return (
         <div className="flex h-screen bg-gray-50">
             {/* Sidebar - Oculta em mobile (hidden), visível em desktop (md:block) */}

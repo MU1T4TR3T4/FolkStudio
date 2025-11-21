@@ -17,23 +17,8 @@ export async function GET(request: Request) {
             );
         }
 
-        const cookieStore = await cookies();
-        const token = cookieStore.get("auth_token")?.value;
-
-        if (!token) {
-            return NextResponse.json(
-                { status: "error", message: "Não autenticado" },
-                { status: 401 }
-            );
-        }
-
-        const payload = verifyToken(token) as any;
-        if (!payload || !payload.userId) {
-            return NextResponse.json(
-                { status: "error", message: "Token inválido" },
-                { status: 401 }
-            );
-        }
+        // Modo demonstração: usa userId fixo
+        const userId = "demo-user";
 
         const order = await prisma.order.findUnique({
             where: { id },
@@ -46,7 +31,7 @@ export async function GET(request: Request) {
             );
         }
 
-        if (order.userId !== payload.userId) {
+        if (order.userId !== userId) {
             return NextResponse.json(
                 { status: "error", message: "Acesso negado" },
                 { status: 403 }

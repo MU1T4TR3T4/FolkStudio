@@ -7,23 +7,8 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get("auth_token")?.value;
-
-        if (!token) {
-            return NextResponse.json(
-                { status: "error", message: "Não autenticado" },
-                { status: 401 }
-            );
-        }
-
-        const payload = verifyToken(token) as any;
-        if (!payload || !payload.userId) {
-            return NextResponse.json(
-                { status: "error", message: "Token inválido" },
-                { status: 401 }
-            );
-        }
+        // Modo demonstração: usa userId fixo
+        const userId = "demo-user";
 
         const body = await req.json();
         const { previewUrl, designUrl, model, color } = body;
@@ -37,7 +22,7 @@ export async function POST(req: Request) {
 
         const order = await prisma.order.create({
             data: {
-                userId: payload.userId,
+                userId,
                 previewUrl,
                 designUrl,
                 model,
