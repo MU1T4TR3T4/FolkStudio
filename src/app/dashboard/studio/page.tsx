@@ -37,6 +37,7 @@ export default function EditorPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [iaPreviewUrl, setIaPreviewUrl] = useState<string | null>(null);
     const [isGeneratingIA, setIsGeneratingIA] = useState(false);
+    const [promptText, setPromptText] = useState<string>("");
 
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -217,8 +218,9 @@ export default function EditorPage() {
     };
 
     async function handleGenerateIAMockup() {
-        if (!image) {
-            toast.error("Por favor, faça upload de uma estampa primeiro.");
+        // Validar: precisa de prompt OU imagem
+        if (!promptText.trim() && !image) {
+            toast.error("Por favor, descreva o design ou faça upload de uma logo.");
             return;
         }
 
@@ -226,14 +228,18 @@ export default function EditorPage() {
         setIaPreviewUrl(null);
 
         try {
-            // Converter imagem para Base64
-            const response = await fetch(image);
-            const blob = await response.blob();
-            const reader = new FileReader();
-            const base64Image = await new Promise<string>((resolve) => {
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.readAsDataURL(blob);
-            });
+            let base64Image = null;
+
+            // Se tem imagem, converter para Base64
+            if (image) {
+                const response = await fetch(image);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                base64Image = await new Promise<string>((resolve) => {
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(blob);
+                });
+            }
 
             const res = await fetch("/api/generate-mockup", {
                 method: "POST",
@@ -242,7 +248,8 @@ export default function EditorPage() {
                     logoBase64: base64Image,
                     modelo: model,
                     cor: color,
-                    design: design // Enviar posição e tamanho customizados
+                    design: image ? design : undefined,
+                    prompt: promptText.trim() || undefined // Enviar prompt se fornecido
                 }),
             });
 
@@ -371,6 +378,20 @@ export default function EditorPage() {
                         </div>
                     </div>
 
+                    {/* Geração com IA via Prompt */}
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-semibold text-gray-900">Gerar Design com IA</h3>
+                        <textarea
+                            value={promptText}
+                            onChange={(e) => setPromptText(e.target.value)}
+                            placeholder="Descreva o design que você quer na camiseta (ex: 'um dragão azul voando sobre montanhas', 'logo minimalista de café')"
+                            className="w-full h-24 px-3 py-2 text-sm border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500">
+                            💡 A IA usará o modelo e cor selecionados acima
+                        </p>
+                    </div>
+
                     {/* Prévia Gerada por IA */}
                     {iaPreviewUrl && (
                         <div className="mt-4 border rounded-xl p-4 bg-purple-50 animate-in fade-in slide-in-from-bottom-4 duration-500 border-purple-100">
@@ -441,15 +462,15 @@ export default function EditorPage() {
 
                             <Button
                                 onClick={handleSaveOrder}
-                                disabled={isSaving || !image}
+                                disabled={isSaving || (!image && !iaPreviewUrl)}
                                 className="w-full h-11 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm rounded-xl"
                             >
                                 {isSaving ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
-                                    <Save className="h-4 w-4" />
+                                    <ShoppingCart className="h-4 w-4" />
                                 )}
-                                Salvar no Dashboard
+                                Prosseguir com Pedido
                             </Button>
                         </div>
                     </div>
