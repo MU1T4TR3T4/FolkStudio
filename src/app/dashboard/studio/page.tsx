@@ -407,40 +407,40 @@ export default function EditorPage() {
                     <div className="flex-1"></div>
 
                     {/* Ações Finais */}
-                    <div className="space-y-3 pt-6 border-t border-gray-100">
+                    <div className="space-y-4 pt-6 border-t border-gray-100">
                         <Button
                             onClick={handleGenerateIAMockup}
                             disabled={isGeneratingIA || !image}
-                            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all hover:scale-[1.02]"
+                            className="w-full h-12 text-base flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all hover:scale-[1.02] rounded-xl"
                         >
                             {isGeneratingIA ? (
                                 <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Gerando com IA...
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    Criando Mágica...
                                 </>
                             ) : (
                                 <>
-                                    <Wand2 className="h-4 w-4" />
-                                    Gerar Mockup Realista com IA
+                                    <Wand2 className="h-5 w-5" />
+                                    Gerar Mockup Realista (IA)
                                 </>
                             )}
                         </Button>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-3">
                             <Button
                                 onClick={handleDownload}
                                 disabled={!image}
                                 variant="outline"
-                                className="w-full flex items-center justify-center gap-2"
+                                className="w-full h-11 flex items-center justify-center gap-2 border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl"
                             >
                                 <Download className="h-4 w-4" />
-                                Canvas PNG
+                                Baixar Imagem (PNG)
                             </Button>
 
                             <Button
                                 onClick={handleSaveOrder}
                                 disabled={isSaving || !image}
-                                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                                className="w-full h-11 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm rounded-xl"
                             >
                                 {isSaving ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
