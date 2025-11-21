@@ -5,7 +5,6 @@ dotenv.config();
 
 export default defineConfig({
   datasource: {
-    provider: 'postgresql',
-    url: process.env.DATABASE_URL!,
+    url: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/db',
   },
 });
