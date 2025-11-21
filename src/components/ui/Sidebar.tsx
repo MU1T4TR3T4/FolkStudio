@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
 
 const navigation = [
     { name: "Início", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Minhas Artes", href: "/dashboard/designs", icon: Image },
+    // { name: "Minhas Artes", href: "/dashboard/designs", icon: Image },
     { name: "Criar Arte", href: "/dashboard/studio", icon: Palette },
-    { name: "Pedidos", href: "/dashboard/orders", icon: ShoppingBag },
-    { name: "Chat", href: "/dashboard/chat", icon: MessageSquare },
+    { name: "Pedidos", href: "/dashboard/pedidos", icon: ShoppingBag },
+    // { name: "Chat", href: "/dashboard/chat", icon: MessageSquare },
 ];
 
 export function Sidebar() {

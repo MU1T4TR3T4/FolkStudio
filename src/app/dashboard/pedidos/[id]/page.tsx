@@ -175,7 +175,7 @@ export default function OrderDetailsPage() {
                         <Button
                             variant="outline"
                             className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
-                            onClick={() => router.push(`/dashboard/editor?orderId=${order.id}`)}
+                            onClick={() => router.push(`/dashboard/studio?orderId=${order.id}`)}
                         >
                             <Edit className="mr-2 h-4 w-4" />
                             Reabrir no Editor
