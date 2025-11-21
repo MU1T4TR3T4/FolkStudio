@@ -5,6 +5,7 @@ import path from "path";
 import fs from "fs";
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Aumentar timeout para 60s
 
 // Mapeamento de arquivos de mockup
 const MOCKUP_FILES: Record<string, Record<string, string>> = {
@@ -73,12 +74,11 @@ export async function POST(req: Request) {
         ctx.drawImage(mockupImage, 0, 0);
 
         // Calcular posição e tamanho da logo (Centralizado no peito)
-        // Ajustes empíricos para ficar realista na região do peito
-        const logoWidth = mockupImage.width * 0.35; // 35% da largura da camiseta
+        const logoWidth = mockupImage.width * 0.35;
         const logoHeight = (logoImage.height / logoImage.width) * logoWidth;
 
         const logoX = (mockupImage.width - logoWidth) / 2;
-        const logoY = mockupImage.height * 0.25; // 25% do topo (altura do peito)
+        const logoY = mockupImage.height * 0.25;
 
         // Desenhar logo
         ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
@@ -93,7 +93,6 @@ export async function POST(req: Request) {
             auth: process.env.REPLICATE_API_TOKEN,
         });
 
-        // Usando SDXL para img2img robusto
         const output = await replicate.run(
             "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
             {
@@ -119,14 +118,48 @@ export async function POST(req: Request) {
             resultUrl = String(output);
         }
 
-        return NextResponse.json({
-            status: "success",
-            resultUrl: resultUrl,
-            previewBase64: compositeBase64
-        });
+        console.log("[generate-mockup] Downloading image and converting to Base64...");
+
+        // Baixar a imagem e converter para Base64 (solução definitiva)
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+            const imageResponse = await fetch(resultUrl, {
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!imageResponse.ok) {
+                throw new Error(`HTTP ${imageResponse.status}`);
+            }
+
+            const arrayBuffer = await imageResponse.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const base64Image = `data:image/png;base64,${buffer.toString('base64')}`;
+
+            console.log("[generate-mockup] ✅ Image converted to Base64 successfully");
+
+            return NextResponse.json({
+                status: "success",
+                resultUrl: base64Image,
+                previewBase64: compositeBase64
+            });
+        } catch (fetchError: any) {
+            console.error("[generate-mockup] ⚠️ Failed to download image:", fetchError.message);
+
+            // Fallback: retornar URL original
+            return NextResponse.json({
+                status: "success",
+                resultUrl: resultUrl,
+                previewBase64: compositeBase64,
+                warning: "Using direct URL (download failed)"
+            });
+        }
 
     } catch (error: any) {
-        console.error("[generate-mockup] Error:", error);
+        console.error("[generate-mockup] ❌ Error:", error);
         return NextResponse.json(
             { status: "error", message: error.message || "Internal Server Error" },
             { status: 500 }

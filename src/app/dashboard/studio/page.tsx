@@ -248,9 +248,8 @@ export default function EditorPage() {
             const data = await res.json();
 
             if (data.status === "success" && data.resultUrl) {
-                // Usar o proxy para exibir a imagem (evita CORS e problemas de download)
-                const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(data.resultUrl)}`;
-                setIaPreviewUrl(proxyUrl);
+                // A API já retorna Base64, então podemos usar diretamente
+                setIaPreviewUrl(data.resultUrl);
                 toast.success("Mockup realista gerado com sucesso!");
             } else {
                 throw new Error(data.message || "Erro ao gerar mockup.");
