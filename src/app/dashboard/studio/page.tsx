@@ -306,6 +306,9 @@ export default function EditorPage() {
                 createdAt: new Date().toISOString(),
                 color,
                 model,
+                // Salvar posição do logo para frente e costas
+                designFront: imageFront ? designFront : null,
+                designBack: imageBack ? designBack : null,
             };
 
             // Salvar no localStorage

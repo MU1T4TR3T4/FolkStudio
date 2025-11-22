@@ -14,6 +14,8 @@ interface Stamp {
     createdAt: string;
     color?: string;
     model?: string;
+    designFront?: { x: number; y: number; width: number; height: number; rotation: number } | null;
+    designBack?: { x: number; y: number; width: number; height: number; rotation: number } | null;
 }
 
 export default function EstampasPage() {
@@ -87,7 +89,10 @@ export default function EstampasPage() {
             const draftOrder = {
                 imageUrl: stamp.frontImageUrl,
                 color: stamp.color || "white",
-                source: "stamp_page"
+                source: "stamp_page",
+                // Incluir dados de posição do logo se existirem
+                designFront: stamp.designFront || null,
+                designBack: stamp.designBack || null
             };
             localStorage.setItem("folk_studio_draft_order", JSON.stringify(draftOrder));
 
