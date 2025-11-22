@@ -182,6 +182,7 @@ export default function OrdersPage() {
 
 function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void; onSuccess: () => void; initialData?: any }) {
     const [image, setImage] = useState<string | null>(initialData?.imageUrl || null);
+    const [backImage, setBackImage] = useState<string | null>(initialData?.backImageUrl || null);
     const [color, setColor] = useState(initialData?.color || "white");
     const [sizes, setSizes] = useState<Record<string, number>>({
         P: 0,
@@ -244,6 +245,7 @@ function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void
 
     const handleSelectStamp = (stamp: any) => {
         setImage(stamp.frontImageUrl);
+        setBackImage(stamp.backImageUrl || null);
         if (stamp.color) setColor(stamp.color);
         setShowStampSelector(false);
         toast.success("Estampa selecionada!");
@@ -324,12 +326,27 @@ function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void
                             />
                             <label htmlFor="order-image-upload" className="cursor-pointer block w-full h-full">
                                 {image ? (
-                                    <div className="relative group">
-                                        <img src={image} alt="Preview" className="max-h-48 mx-auto rounded shadow-sm" />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium rounded">
-                                            Clique para alterar
+                                    backImage ? (
+                                        // Mostrar frente e costas lado a lado
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="text-center">
+                                                <p className="text-xs text-gray-500 mb-2">Frente</p>
+                                                <img src={image} alt="Frente" className="max-h-48 mx-auto rounded shadow-sm" />
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-xs text-gray-500 mb-2">Costas</p>
+                                                <img src={backImage} alt="Costas" className="max-h-48 mx-auto rounded shadow-sm" />
+                                            </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        // Mostrar apenas frente
+                                        <div className="relative group">
+                                            <img src={image} alt="Preview" className="max-h-48 mx-auto rounded shadow-sm" />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium rounded">
+                                                Clique para alterar
+                                            </div>
+                                        </div>
+                                    )
                                 ) : (
                                     <div>
                                         <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
@@ -347,7 +364,7 @@ function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void
                             Cor da Camisa
                         </label>
                         <div className="grid grid-cols-3 gap-2">
-                            {["white", "black", "blue", "red", "green", "yellow"].map((c) => (
+                            {["white", "black", "blue"].map((c) => (
                                 <button
                                     key={c}
                                     onClick={() => setColor(c)}
