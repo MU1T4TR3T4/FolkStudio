@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Upload, ShoppingBag, Package, CheckCircle, Clock } from "lucide-react";
+import { Plus, Upload, ShoppingBag, Package, CheckCircle, Clock, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
 
@@ -12,6 +12,7 @@ interface Order {
     material: string;
     sizes: Record<string, number>;
     totalQty: number;
+    observations: string | null;
     status: string;
     createdAt: string;
 }
@@ -25,18 +26,24 @@ export default function OrdersPage() {
         loadOrders();
     }, []);
 
-    async function loadOrders() {
+    function loadOrders() {
         try {
-            const res = await fetch("/api/orders/list-all");
-            const data = await res.json();
-            if (data.status === "success") {
-                setOrders(data.orders);
+            const savedOrders = localStorage.getItem("folk_studio_orders");
+            if (savedOrders) {
+                setOrders(JSON.parse(savedOrders));
             }
         } catch (error) {
-            console.error(error);
+            console.error("Erro ao carregar pedidos:", error);
         } finally {
             setLoading(false);
         }
+    }
+
+    function deleteOrder(id: string) {
+        const updatedOrders = orders.filter(order => order.id !== id);
+        setOrders(updatedOrders);
+        localStorage.setItem("folk_studio_orders", JSON.stringify(updatedOrders));
+        toast.success("Pedido removido");
     }
 
     const getStatusBadge = (status: string) => {
@@ -104,8 +111,16 @@ export default function OrdersPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {orders.map((order) => (
-                        <div key={order.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                            <div className="aspect-square bg-gray-100 relative">
+                        <div key={order.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow relative group">
+                            <button
+                                onClick={() => deleteOrder(order.id)}
+                                className="absolute top-2 right-2 p-1.5 bg-white/80 hover:bg-red-100 text-gray-500 hover:text-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
+                                title="Excluir pedido"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </button>
+
+                            <div className="aspect-square bg-gray-100 relative p-4">
                                 <img
                                     src={order.imageUrl}
                                     alt="Pedido"
@@ -125,9 +140,14 @@ export default function OrdersPage() {
                                     {getStatusBadge(order.status)}
                                 </div>
                                 <div className="space-y-1 text-xs text-gray-600">
-                                    <p><span className="font-medium">Cor:</span> {order.color}</p>
-                                    <p><span className="font-medium">Material:</span> {order.material}</p>
+                                    <p><span className="font-medium">Cor:</span> <span className="capitalize">{order.color}</span></p>
+                                    <p><span className="font-medium">Material:</span> <span className="capitalize">{order.material}</span></p>
                                     <p><span className="font-medium">Tamanhos:</span> {Object.entries(order.sizes).filter(([_, qty]) => qty > 0).map(([size, qty]) => `${size}(${qty})`).join(", ")}</p>
+                                    {order.observations && (
+                                        <p className="mt-2 pt-2 border-t border-gray-100 italic text-gray-500 truncate">
+                                            "{order.observations}"
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -163,8 +183,8 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                     let width = img.width;
                     let height = img.height;
 
-                    // Redimensionar se for muito grande (max 1024px)
-                    const MAX_SIZE = 1024;
+                    // Redimensionar se for muito grande (max 800px para localStorage)
+                    const MAX_SIZE = 800;
                     if (width > MAX_SIZE || height > MAX_SIZE) {
                         if (width > height) {
                             height *= MAX_SIZE / width;
@@ -180,8 +200,8 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                     const ctx = canvas.getContext('2d');
                     ctx?.drawImage(img, 0, 0, width, height);
 
-                    // Converter para Base64 com qualidade reduzida (0.8)
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                    // Converter para Base64 com qualidade média (0.7)
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
                     setImage(compressedBase64);
                 };
                 img.src = event.target?.result as string;
@@ -195,26 +215,29 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
     const handleSubmit = async () => {
         setSaving(true);
         try {
-            const res = await fetch("/api/orders/save", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    imageBase64: image,
-                    color,
-                    material,
-                    sizes,
-                    totalQty: totalQuantity,
-                    observations: observations.trim() || null,
-                }),
-            });
+            // Simular delay de rede
+            await new Promise(resolve => setTimeout(resolve, 800));
 
-            const data = await res.json();
-            if (data.status === "success") {
-                toast.success("Pedido criado com sucesso!");
-                onSuccess();
-            } else {
-                toast.error("Erro ao criar pedido: " + data.message);
-            }
+            const newOrder: Order = {
+                id: crypto.randomUUID(),
+                imageUrl: image || "",
+                color,
+                material,
+                sizes,
+                totalQty: totalQuantity,
+                observations: observations.trim() || null,
+                status: "Pendente",
+                createdAt: new Date().toISOString(),
+            };
+
+            // Salvar no localStorage
+            const savedOrders = localStorage.getItem("folk_studio_orders");
+            const orders = savedOrders ? JSON.parse(savedOrders) : [];
+            orders.unshift(newOrder); // Adicionar no início
+            localStorage.setItem("folk_studio_orders", JSON.stringify(orders));
+
+            toast.success("Pedido criado com sucesso!");
+            onSuccess();
         } catch (error) {
             console.error(error);
             toast.error("Erro ao criar pedido");
