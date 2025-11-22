@@ -172,6 +172,16 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
     const [observations, setObservations] = useState("");
     const [saving, setSaving] = useState(false);
 
+    const [showStampSelector, setShowStampSelector] = useState(false);
+    const [savedStamps, setSavedStamps] = useState<any[]>([]);
+
+    useEffect(() => {
+        const stamps = localStorage.getItem("folk_studio_stamps");
+        if (stamps) {
+            setSavedStamps(JSON.parse(stamps));
+        }
+    }, []);
+
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -208,6 +218,13 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
             };
             reader.readAsDataURL(file);
         }
+    };
+
+    const handleSelectStamp = (stamp: any) => {
+        setImage(stamp.frontImageUrl);
+        if (stamp.color) setColor(stamp.color);
+        setShowStampSelector(false);
+        toast.success("Estampa selecionada!");
     };
 
     const totalQuantity = Object.values(sizes).reduce((sum, qty) => sum + qty, 0);
@@ -248,7 +265,7 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 relative">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold">Novo Pedido</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">
@@ -262,7 +279,20 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                         <label className="block text-sm font-semibold text-gray-900 mb-2">
                             Imagem da Camisa ou Logo
                         </label>
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer">
+
+                        <div className="flex gap-4 mb-4">
+                            <Button
+                                type="button"
+                                onClick={() => setShowStampSelector(true)}
+                                variant="outline"
+                                className="w-full border-dashed border-2 h-auto py-4 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600"
+                            >
+                                <ShoppingBag className="h-6 w-6" />
+                                <span>Selecionar de Minhas Estampas</span>
+                            </Button>
+                        </div>
+
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer relative">
                             <input
                                 type="file"
                                 accept="image/*"
@@ -270,13 +300,18 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                                 className="hidden"
                                 id="order-image-upload"
                             />
-                            <label htmlFor="order-image-upload" className="cursor-pointer">
+                            <label htmlFor="order-image-upload" className="cursor-pointer block w-full h-full">
                                 {image ? (
-                                    <img src={image} alt="Preview" className="max-h-48 mx-auto rounded" />
+                                    <div className="relative group">
+                                        <img src={image} alt="Preview" className="max-h-48 mx-auto rounded shadow-sm" />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium rounded">
+                                            Clique para alterar
+                                        </div>
+                                    </div>
                                 ) : (
                                     <div>
                                         <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                                        <p className="text-sm text-gray-600">Clique para fazer upload</p>
+                                        <p className="text-sm text-gray-600">Ou faça upload de uma imagem</p>
                                         <p className="text-xs text-gray-400 mt-1">PNG, JPG (max. 5MB)</p>
                                     </div>
                                 )}
@@ -380,6 +415,50 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                         </Button>
                     </div>
                 </div>
+
+                {/* Modal de Seleção de Estampa */}
+                {showStampSelector && (
+                    <div className="absolute inset-0 bg-white z-10 flex flex-col rounded-xl">
+                        <div className="p-4 border-b flex items-center justify-between bg-gray-50 rounded-t-xl">
+                            <h3 className="font-bold text-lg">Selecionar Estampa</h3>
+                            <Button onClick={() => setShowStampSelector(false)} variant="ghost" size="sm">
+                                Fechar
+                            </Button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {savedStamps.length === 0 ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <p>Nenhuma estampa salva encontrada.</p>
+                                    <p className="text-sm mt-2">Crie modelos no Studio primeiro.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                    {savedStamps.map((stamp) => (
+                                        <button
+                                            key={stamp.id}
+                                            onClick={() => handleSelectStamp(stamp)}
+                                            className="group relative border rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 focus:outline-none transition-all text-left"
+                                        >
+                                            <div className="aspect-square bg-gray-100 p-2">
+                                                <img
+                                                    src={stamp.frontImageUrl}
+                                                    alt={stamp.name}
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            </div>
+                                            <div className="p-2 bg-white">
+                                                <p className="text-xs font-medium truncate text-gray-900">{stamp.name}</p>
+                                                <p className="text-[10px] text-gray-500 mt-0.5">
+                                                    {new Date(stamp.createdAt).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
