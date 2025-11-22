@@ -25,3 +25,15 @@ model Order {
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id])
 }
+
+model Stamp {
+  id         String   @id @default(uuid())
+  userId     String
+  name       String?
+  imageUrl   String
+  designData String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@index([userId])
+}

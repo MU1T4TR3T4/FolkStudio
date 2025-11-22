@@ -7,6 +7,7 @@ const navigation = [
     // { name: "Minhas Artes", href: "/dashboard/designs", icon: Image },
     { name: "Criar Arte", href: "/dashboard/studio", icon: Palette },
     { name: "Pedidos", href: "/dashboard/pedidos", icon: ShoppingBag },
+    { name: "Minhas Estampas", href: "/dashboard/estampas", icon: Image },
     // { name: "Chat", href: "/dashboard/chat", icon: MessageSquare },
 ];
 

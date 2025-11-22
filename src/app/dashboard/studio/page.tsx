@@ -217,6 +217,45 @@ export default function EditorPage() {
         }
     };
 
+    const handleSaveStamp = async () => {
+        if (!image) {
+            toast.error("Adicione uma estampa primeiro.");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const finalImageUrl = await generateCanvasImage();
+
+            if (!finalImageUrl) {
+                throw new Error("Falha ao gerar imagem");
+            }
+
+            const res = await fetch("/api/stamps/save", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    imageBase64: finalImageUrl,
+                    name: null,
+                    designData: design,
+                }),
+            });
+
+            const data = await res.json();
+            if (data.status === "success") {
+                toast.success("Modelo salvo com sucesso!");
+                router.push("/dashboard/estampas");
+            } else {
+                toast.error("Erro ao salvar modelo: " + data.message);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao salvar modelo.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     async function handleGenerateIAMockup() {
         if (!promptText.trim()) {
             toast.error("Por favor, descreva o design que você quer.");
@@ -439,20 +478,20 @@ export default function EditorPage() {
                                 className="w-full h-11 flex items-center justify-center gap-2 border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl"
                             >
                                 <Download className="h-4 w-4" />
-                                Baixar Imagem (PNG)
+                                Baixar Modelo
                             </Button>
 
                             <Button
-                                onClick={handleSaveOrder}
-                                disabled={isSaving || (!image && !iaPreviewUrl)}
+                                onClick={handleSaveStamp}
+                                disabled={isSaving || !image}
                                 className="w-full h-11 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm rounded-xl"
                             >
                                 {isSaving ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
-                                    <ShoppingCart className="h-4 w-4" />
+                                    <Save className="h-4 w-4" />
                                 )}
-                                Prosseguir com Pedido
+                                Salvar Modelo
                             </Button>
                         </div>
                     </div>
