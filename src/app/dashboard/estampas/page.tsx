@@ -83,24 +83,15 @@ export default function EstampasPage() {
 
     function handleStartOrder(stamp: Stamp) {
         try {
-            const newOrder = {
-                id: crypto.randomUUID(),
+            // Salvar rascunho no localStorage para ser recuperado na página de pedidos
+            const draftOrder = {
                 imageUrl: stamp.frontImageUrl,
-                color: stamp.color || "white", // Default se não existir
-                material: "algodao",
-                sizes: { P: 0, M: 1, G: 0, GG: 0, XG: 0 }, // Default: 1 M
-                totalQty: 1,
-                observations: `Pedido criado a partir do modelo: ${stamp.name || "Sem nome"}`,
-                status: "Pendente",
-                createdAt: new Date().toISOString(),
+                color: stamp.color || "white",
+                source: "stamp_page"
             };
+            localStorage.setItem("folk_studio_draft_order", JSON.stringify(draftOrder));
 
-            const savedOrders = localStorage.getItem("folk_studio_orders");
-            const orders = savedOrders ? JSON.parse(savedOrders) : [];
-            orders.unshift(newOrder);
-            localStorage.setItem("folk_studio_orders", JSON.stringify(orders));
-
-            toast.success("Pedido iniciado! Redirecionando...");
+            toast.success("Redirecionando para criar pedido...");
             router.push("/dashboard/orders");
         } catch (error) {
             console.error(error);
@@ -131,8 +122,8 @@ export default function EstampasPage() {
                 <button
                     onClick={() => setActiveTab("models")}
                     className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "models"
-                            ? "border-blue-600 text-blue-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        ? "border-blue-600 text-blue-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                         }`}
                 >
                     <Shirt className="h-4 w-4" />
@@ -141,8 +132,8 @@ export default function EstampasPage() {
                 <button
                     onClick={() => setActiveTab("ai")}
                     className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "ai"
-                            ? "border-purple-600 text-purple-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        ? "border-purple-600 text-purple-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                         }`}
                 >
                     <Wand2 className="h-4 w-4" />
@@ -151,8 +142,8 @@ export default function EstampasPage() {
                 <button
                     onClick={() => setActiveTab("uploads")}
                     className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "uploads"
-                            ? "border-green-600 text-green-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        ? "border-green-600 text-green-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                         }`}
                 >
                     <ImageIcon className="h-4 w-4" />

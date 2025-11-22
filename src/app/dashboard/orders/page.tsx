@@ -21,10 +21,28 @@ export default function OrdersPage() {
     const [showNewOrderForm, setShowNewOrderForm] = useState(false);
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
+    const [draftOrderData, setDraftOrderData] = useState<any>(null);
 
     useEffect(() => {
         loadOrders();
+        checkDraftOrder();
     }, []);
+
+    function checkDraftOrder() {
+        const draft = localStorage.getItem("folk_studio_draft_order");
+        if (draft) {
+            try {
+                const parsedDraft = JSON.parse(draft);
+                setDraftOrderData(parsedDraft);
+                setShowNewOrderForm(true);
+                // Limpar o rascunho para não abrir novamente ao recarregar
+                localStorage.removeItem("folk_studio_draft_order");
+                toast.info("Continuando seu pedido...");
+            } catch (e) {
+                console.error("Erro ao carregar rascunho", e);
+            }
+        }
+    }
 
     function loadOrders() {
         try {
@@ -76,7 +94,10 @@ export default function OrdersPage() {
                     </p>
                 </div>
                 <Button
-                    onClick={() => setShowNewOrderForm(true)}
+                    onClick={() => {
+                        setDraftOrderData(null);
+                        setShowNewOrderForm(true);
+                    }}
                     className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                 >
                     <Plus className="h-4 w-4" />
@@ -87,6 +108,7 @@ export default function OrdersPage() {
             {/* Modal de Novo Pedido */}
             {showNewOrderForm && (
                 <NewOrderForm
+                    initialData={draftOrderData}
                     onClose={() => setShowNewOrderForm(false)}
                     onSuccess={() => {
                         setShowNewOrderForm(false);
@@ -158,9 +180,9 @@ export default function OrdersPage() {
     );
 }
 
-function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-    const [image, setImage] = useState<string | null>(null);
-    const [color, setColor] = useState("white");
+function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void; onSuccess: () => void; initialData?: any }) {
+    const [image, setImage] = useState<string | null>(initialData?.imageUrl || null);
+    const [color, setColor] = useState(initialData?.color || "white");
     const [sizes, setSizes] = useState<Record<string, number>>({
         P: 0,
         M: 0,
