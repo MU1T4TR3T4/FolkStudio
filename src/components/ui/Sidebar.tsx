@@ -8,7 +8,7 @@ const navigation = [
     { name: "Criar Arte", href: "/dashboard/studio", icon: Palette },
     { name: "Pedidos", href: "/dashboard/orders", icon: ShoppingBag },
     { name: "Minhas Estampas", href: "/dashboard/estampas", icon: Image },
-    // { name: "Chat", href: "/dashboard/chat", icon: MessageSquare },
+    { name: "Chat", href: "/dashboard/chat", icon: MessageSquare },
 ];
 
 export function Sidebar() {
