@@ -43,7 +43,9 @@ const MOCKUPS = {
 };
 
 export default function EditorPage() {
-    const [image, setImage] = useState<string | null>(null);
+    // Imagens separadas para frente e costas
+    const [imageFront, setImageFront] = useState<string | null>(null);
+    const [imageBack, setImageBack] = useState<string | null>(null);
     const [model, setModel] = useState<TShirtModel>("short");
     const [color, setColor] = useState<TShirtColor>("white");
     const [side, setSide] = useState<TShirtSide>("front");
@@ -62,10 +64,16 @@ export default function EditorPage() {
         rotation: 0,
     });
     const [isSaving, setIsSaving] = useState(false);
-    const [iaPreviewUrl, setIaPreviewUrl] = useState<string | null>(null);
     const [isGeneratingIA, setIsGeneratingIA] = useState(false);
     const [promptText, setPromptText] = useState<string>("");
 
+    // Galerias de imagens
+    const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+    const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+
+    // Computed properties baseados no lado atual
+    const image = side === "front" ? imageFront : imageBack;
+    const setImage = side === "front" ? setImageFront : setImageBack;
     const design = side === "front" ? designFront : designBack;
     const setDesign = side === "front" ? setDesignFront : setDesignBack;
 
@@ -95,6 +103,10 @@ export default function EditorPage() {
             }
             const imageUrl = URL.createObjectURL(file);
             setImage(imageUrl);
+
+            // Adicionar à galeria de uploads
+            setUploadedImages(prev => [...prev, imageUrl]);
+
             toast.success("Imagem carregada com sucesso!");
         }
     };
@@ -206,7 +218,7 @@ export default function EditorPage() {
 
         setIsSaving(true);
         try {
-            const finalImageUrl = iaPreviewUrl || await generateCanvasImage();
+            const finalImageUrl = await generateCanvasImage();
 
             if (!finalImageUrl) {
                 throw new Error("Falha ao gerar imagem");
@@ -307,7 +319,6 @@ export default function EditorPage() {
         }
 
         setIsGeneratingIA(true);
-        setIaPreviewUrl(null);
 
         try {
             const res = await fetch("/api/generate-mockup", {
@@ -321,7 +332,10 @@ export default function EditorPage() {
             const data = await res.json();
 
             if (data.status === "success" && data.generatedLogo) {
-                // Carregar design gerado como imagem posicionável
+                // Adicionar à galeria de imagens geradas
+                setGeneratedImages(prev => [...prev, data.generatedLogo]);
+
+                // Carregar design gerado como imagem posicionável no lado atual
                 setImage(data.generatedLogo);
                 toast.success("Design gerado! Posicione no mockup.");
             } else {
@@ -474,41 +488,6 @@ export default function EditorPage() {
                             💡 A IA usará o modelo e cor selecionados acima
                         </p>
                     </div>
-
-                    {/* Prévia Gerada por IA */}
-                    {iaPreviewUrl && (
-                        <div className="mt-4 border rounded-xl p-4 bg-purple-50 animate-in fade-in slide-in-from-bottom-4 duration-500 border-purple-100">
-                            <h3 className="text-sm font-semibold mb-3 text-purple-900 flex items-center gap-2">
-                                <Wand2 className="h-4 w-4 text-purple-600" />
-                                Mockup Realista (IA)
-                            </h3>
-                            <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-purple-200 bg-white">
-                                <img
-                                    src={iaPreviewUrl}
-                                    alt="Mockup IA"
-                                    className="w-full h-full object-contain"
-                                />
-                            </div>
-                            <div className="flex gap-2 mt-3">
-                                <Button
-                                    onClick={() => {
-                                        const link = document.createElement("a");
-                                        link.href = iaPreviewUrl;
-                                        link.download = `mockup-ia-${model}-${color}.png`;
-                                        document.body.appendChild(link);
-                                        link.click();
-                                        document.body.removeChild(link);
-                                    }}
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1 border-purple-200 text-purple-700 hover:bg-purple-100"
-                                >
-                                    <Download className="h-3 w-3 mr-2" />
-                                    Baixar
-                                </Button>
-                            </div>
-                        </div>
-                    )}
 
                     <div className="flex-1"></div>
 
