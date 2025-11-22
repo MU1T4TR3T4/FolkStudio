@@ -304,6 +304,8 @@ export default function EditorPage() {
                 frontImageUrl: frontImage,
                 backImageUrl: backImage || null,
                 createdAt: new Date().toISOString(),
+                color,
+                model,
             };
 
             // Salvar no localStorage

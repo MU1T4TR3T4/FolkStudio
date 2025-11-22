@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trash2, Download, Plus, Image as ImageIcon, Wand2, Shirt } from "lucide-react";
+import { Trash2, Download, Plus, Image as ImageIcon, Wand2, Shirt, Eye, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
 import { useRouter } from "next/navigation";
@@ -12,6 +12,8 @@ interface Stamp {
     frontImageUrl: string;
     backImageUrl: string | null;
     createdAt: string;
+    color?: string;
+    model?: string;
 }
 
 export default function EstampasPage() {
@@ -20,6 +22,7 @@ export default function EstampasPage() {
     const [generatedDesigns, setGeneratedDesigns] = useState<string[]>([]);
     const [uploads, setUploads] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
+    const [viewingStamp, setViewingStamp] = useState<Stamp | null>(null);
     const router = useRouter();
 
     useEffect(() => {
@@ -28,15 +31,12 @@ export default function EstampasPage() {
 
     function loadAllData() {
         try {
-            // Carregar Modelos
             const savedStamps = localStorage.getItem("folk_studio_stamps");
             if (savedStamps) setStamps(JSON.parse(savedStamps));
 
-            // Carregar Designs IA
             const savedGenerated = localStorage.getItem("folk_studio_generated_designs");
             if (savedGenerated) setGeneratedDesigns(JSON.parse(savedGenerated));
 
-            // Carregar Uploads
             const savedUploads = localStorage.getItem("folk_studio_uploads");
             if (savedUploads) setUploads(JSON.parse(savedUploads));
 
@@ -79,6 +79,33 @@ export default function EstampasPage() {
         link.click();
         document.body.removeChild(link);
         toast.success("Download iniciado!");
+    }
+
+    function handleStartOrder(stamp: Stamp) {
+        try {
+            const newOrder = {
+                id: crypto.randomUUID(),
+                imageUrl: stamp.frontImageUrl,
+                color: stamp.color || "white", // Default se não existir
+                material: "algodao",
+                sizes: { P: 0, M: 1, G: 0, GG: 0, XG: 0 }, // Default: 1 M
+                totalQty: 1,
+                observations: `Pedido criado a partir do modelo: ${stamp.name || "Sem nome"}`,
+                status: "Pendente",
+                createdAt: new Date().toISOString(),
+            };
+
+            const savedOrders = localStorage.getItem("folk_studio_orders");
+            const orders = savedOrders ? JSON.parse(savedOrders) : [];
+            orders.unshift(newOrder);
+            localStorage.setItem("folk_studio_orders", JSON.stringify(orders));
+
+            toast.success("Pedido iniciado! Redirecionando...");
+            router.push("/dashboard/orders");
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao iniciar pedido");
+        }
     }
 
     return (
@@ -147,7 +174,7 @@ export default function EstampasPage() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {stamps.map((stamp) => (
-                                    <div key={stamp.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                                    <div key={stamp.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col">
                                         <div className="grid grid-cols-2 gap-1 bg-gray-100 p-2">
                                             <div className="bg-white rounded p-1">
                                                 <p className="text-xs text-gray-500 mb-1 text-center">Frente</p>
@@ -160,17 +187,35 @@ export default function EstampasPage() {
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="p-4">
+                                        <div className="p-4 flex-1 flex flex-col">
                                             <h3 className="font-semibold text-gray-900 mb-1 truncate">{stamp.name}</h3>
                                             <p className="text-xs text-gray-500 mb-3">{new Date(stamp.createdAt).toLocaleDateString("pt-BR")}</p>
-                                            <div className="flex gap-2">
-                                                <Button onClick={() => handleDownload(stamp.frontImageUrl, "modelo-frente")} variant="outline" size="sm" className="flex-1">
-                                                    <Download className="h-3 w-3 mr-1" /> Frente
+
+                                            <div className="mt-auto grid grid-cols-2 gap-2">
+                                                <Button
+                                                    onClick={() => setViewingStamp(stamp)}
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="w-full text-xs"
+                                                >
+                                                    <Eye className="h-3 w-3 mr-1" /> Ver
                                                 </Button>
-                                                <Button onClick={() => handleDeleteModel(stamp.id)} variant="outline" size="sm" className="text-red-600 hover:bg-red-50">
-                                                    <Trash2 className="h-3 w-3" />
+                                                <Button
+                                                    onClick={() => handleStartOrder(stamp)}
+                                                    size="sm"
+                                                    className="w-full text-xs bg-green-600 hover:bg-green-700 text-white"
+                                                >
+                                                    <ShoppingBag className="h-3 w-3 mr-1" /> Pedir
                                                 </Button>
                                             </div>
+                                            <Button
+                                                onClick={() => handleDeleteModel(stamp.id)}
+                                                variant="ghost"
+                                                size="sm"
+                                                className="w-full mt-2 text-red-500 hover:text-red-700 hover:bg-red-50 h-6 text-xs"
+                                            >
+                                                Excluir Modelo
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}
@@ -223,6 +268,70 @@ export default function EstampasPage() {
                             </div>
                         )
                     )}
+                </div>
+            )}
+
+            {/* Modal de Visualização */}
+            {viewingStamp && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setViewingStamp(null)}>
+                    <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 relative" onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={() => setViewingStamp(null)}
+                            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                        >
+                            <X className="h-6 w-6 text-gray-500" />
+                        </button>
+
+                        <h2 className="text-2xl font-bold mb-6 pr-12">{viewingStamp.name}</h2>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                <h3 className="text-center font-medium text-gray-500 mb-4">Frente</h3>
+                                <img src={viewingStamp.frontImageUrl} alt="Frente" className="w-full h-auto object-contain rounded-lg shadow-sm" />
+                                <Button
+                                    onClick={() => handleDownload(viewingStamp.frontImageUrl, `${viewingStamp.name}-frente`)}
+                                    variant="outline"
+                                    className="w-full mt-4"
+                                >
+                                    <Download className="h-4 w-4 mr-2" /> Baixar Imagem
+                                </Button>
+                            </div>
+
+                            {viewingStamp.backImageUrl ? (
+                                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                    <h3 className="text-center font-medium text-gray-500 mb-4">Costas</h3>
+                                    <img src={viewingStamp.backImageUrl} alt="Costas" className="w-full h-auto object-contain rounded-lg shadow-sm" />
+                                    <Button
+                                        onClick={() => handleDownload(viewingStamp.backImageUrl!, `${viewingStamp.name}-costas`)}
+                                        variant="outline"
+                                        className="w-full mt-4"
+                                    >
+                                        <Download className="h-4 w-4 mr-2" /> Baixar Imagem
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-300 text-gray-400">
+                                    <p>Sem verso</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-8 flex justify-end gap-4 pt-6 border-t border-gray-100">
+                            <Button onClick={() => setViewingStamp(null)} variant="outline">
+                                Fechar
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    handleStartOrder(viewingStamp);
+                                    setViewingStamp(null);
+                                }}
+                                className="bg-green-600 hover:bg-green-700 text-white px-8"
+                            >
+                                <ShoppingBag className="h-4 w-4 mr-2" />
+                                Iniciar Pedido com este Modelo
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
