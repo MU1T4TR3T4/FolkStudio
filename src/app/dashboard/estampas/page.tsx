@@ -9,7 +9,8 @@ import { useRouter } from "next/navigation";
 interface Stamp {
     id: string;
     name: string | null;
-    imageUrl: string;
+    frontImageUrl: string;
+    backImageUrl: string | null;
     createdAt: string;
 }
 
@@ -55,10 +56,10 @@ export default function EstampasPage() {
         }
     }
 
-    function handleDownload(imageUrl: string, name: string | null) {
+    function handleDownload(imageUrl: string, name: string | null, side: string) {
         const link = document.createElement("a");
         link.href = imageUrl;
-        link.download = name || "estampa.png";
+        link.download = `${name || "estampa"}-${side}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -101,12 +102,26 @@ export default function EstampasPage() {
                             key={stamp.id}
                             className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                         >
-                            <div className="aspect-square bg-gray-100 relative">
-                                <img
-                                    src={stamp.imageUrl}
-                                    alt={stamp.name || "Estampa"}
-                                    className="w-full h-full object-contain"
-                                />
+                            {/* Grid de Frente e Costas */}
+                            <div className="grid grid-cols-2 gap-1 bg-gray-100 p-2">
+                                <div className="bg-white rounded p-1">
+                                    <p className="text-xs text-gray-500 mb-1 text-center">Frente</p>
+                                    <img
+                                        src={stamp.frontImageUrl}
+                                        alt={`${stamp.name || "Estampa"} - Frente`}
+                                        className="w-full aspect-square object-contain"
+                                    />
+                                </div>
+                                {stamp.backImageUrl && (
+                                    <div className="bg-white rounded p-1">
+                                        <p className="text-xs text-gray-500 mb-1 text-center">Costas</p>
+                                        <img
+                                            src={stamp.backImageUrl}
+                                            alt={`${stamp.name || "Estampa"} - Costas`}
+                                            className="w-full aspect-square object-contain"
+                                        />
+                                    </div>
+                                )}
                             </div>
                             <div className="p-4">
                                 <h3 className="font-semibold text-gray-900 mb-1 truncate">
@@ -117,14 +132,25 @@ export default function EstampasPage() {
                                 </p>
                                 <div className="flex gap-2">
                                     <Button
-                                        onClick={() => handleDownload(stamp.imageUrl, stamp.name)}
+                                        onClick={() => handleDownload(stamp.frontImageUrl, stamp.name, "frente")}
                                         variant="outline"
                                         size="sm"
                                         className="flex-1"
                                     >
                                         <Download className="h-3 w-3 mr-1" />
-                                        Baixar
+                                        Frente
                                     </Button>
+                                    {stamp.backImageUrl && (
+                                        <Button
+                                            onClick={() => handleDownload(stamp.backImageUrl!, stamp.name, "costas")}
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1"
+                                        >
+                                            <Download className="h-3 w-3 mr-1" />
+                                            Costas
+                                        </Button>
+                                    )}
                                     <Button
                                         onClick={() => handleDelete(stamp.id)}
                                         variant="outline"

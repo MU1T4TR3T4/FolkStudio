@@ -32,7 +32,7 @@ const MOCKUPS = {
             back: "/mockups/camiseta-manga-longa-branca-costas.png"
         },
         black: {
-            front: "/mockups/camiseta-manga-longa-preta-costas.png", // TEMPORÁRIO: usando costas como fallback
+            front: "/mockups/camiseta-manga-longa-preta-frente.png",
             back: "/mockups/camiseta-manga-longa-preta-costas.png"
         },
         blue: {

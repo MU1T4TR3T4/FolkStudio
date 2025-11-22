@@ -27,10 +27,17 @@ export async function DELETE(req: Request) {
             );
         }
 
-        // Deletar arquivo
-        const filePath = path.join(process.cwd(), "public", stamp.imageUrl);
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        // Deletar arquivos (frente e costas)
+        const frontFilePath = path.join(process.cwd(), "public", stamp.frontImageUrl);
+        if (fs.existsSync(frontFilePath)) {
+            fs.unlinkSync(frontFilePath);
+        }
+
+        if (stamp.backImageUrl) {
+            const backFilePath = path.join(process.cwd(), "public", stamp.backImageUrl);
+            if (fs.existsSync(backFilePath)) {
+                fs.unlinkSync(backFilePath);
+            }
         }
 
         // Deletar do banco

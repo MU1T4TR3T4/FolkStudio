@@ -68,7 +68,7 @@ export async function POST(req: Request) {
                 frontImageUrl,
                 backImageUrl,
                 createdAt: new Date(),
-            };
+            } as any;
         }
 
         return NextResponse.json({
