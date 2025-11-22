@@ -31,11 +31,13 @@ export async function POST(req: Request) {
             auth: process.env.REPLICATE_API_TOKEN,
         });
 
-        // Prompt otimizado para gerar design isolado
-        const designPrompt = `${prompt}, isolated design element, centered composition, white background, no text, sticker style, high quality, detailed, 8k`;
-        const negativePrompt = "blurry, low quality, distorted, deformed, background elements, text, watermark, multiple objects, cluttered";
+        // Construir prompt profissional baseado nas diretrizes de design
+        const designPrompt = `T-shirt logo design: ${prompt}, vector style or vector-like appearance with clean defined lines, isolated design element, centered composition, white background, no text unless requested, high quality, detailed, suitable for printing, strong visual presence, modern and impactful, professional streetwear aesthetic, balanced composition, clear silhouettes, strong contrast, 8k`;
 
-        console.log(`[generate-mockup] Design prompt: "${designPrompt}"`);
+        const negativePrompt = "blurry, low quality, distorted, deformed, background elements, watermark, multiple objects, cluttered, noisy, excessive details, text (unless requested), messy, unclear, pixelated";
+
+        console.log(`[generate-mockup] User input: "${prompt}"`);
+        console.log(`[generate-mockup] Final prompt: "${designPrompt}"`);
 
         // Passo 1: Gerar design com SDXL
         const designOutput = await replicate.run(
@@ -46,8 +48,8 @@ export async function POST(req: Request) {
                     negative_prompt: negativePrompt,
                     width: 1024,
                     height: 1024,
-                    num_inference_steps: 30,
-                    guidance_scale: 7.5,
+                    num_inference_steps: 40,
+                    guidance_scale: 8.5,
                     scheduler: "K_EULER"
                 }
             } as any
