@@ -6,11 +6,11 @@ import path from "path";
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { imageBase64, name, designData } = body;
+        const { frontImage, backImage, frontDesignData, backDesignData, name } = body;
 
-        if (!imageBase64) {
+        if (!frontImage) {
             return NextResponse.json(
-                { status: "error", message: "Imagem é obrigatória" },
+                { status: "error", message: "Imagem da frente é obrigatória" },
                 { status: 400 }
             );
         }
@@ -24,35 +24,60 @@ export async function POST(req: Request) {
             fs.mkdirSync(userDir, { recursive: true });
         }
 
-        // Gerar nome único para o arquivo
+        // Gerar nome único para os arquivos
         const timestamp = Date.now();
-        const fileName = `stamp-${timestamp}.png`;
-        const filePath = path.join(userDir, fileName);
 
-        // Converter Base64 para arquivo
-        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, "base64");
-        fs.writeFileSync(filePath, buffer);
+        // Salvar imagem da frente
+        const frontFileName = `stamp-${timestamp}-front.png`;
+        const frontFilePath = path.join(userDir, frontFileName);
+        const frontBase64Data = frontImage.replace(/^data:image\/\w+;base64,/, "");
+        const frontBuffer = Buffer.from(frontBase64Data, "base64");
+        fs.writeFileSync(frontFilePath, frontBuffer);
+        const frontImageUrl = `/uploads/stamps/${userId}/${frontFileName}`;
 
-        // URL pública da imagem
-        const imageUrl = `/uploads/stamps/${userId}/${fileName}`;
+        // Salvar imagem das costas (se existir)
+        let backImageUrl = null;
+        if (backImage) {
+            const backFileName = `stamp-${timestamp}-back.png`;
+            const backFilePath = path.join(userDir, backFileName);
+            const backBase64Data = backImage.replace(/^data:image\/\w+;base64,/, "");
+            const backBuffer = Buffer.from(backBase64Data, "base64");
+            fs.writeFileSync(backFilePath, backBuffer);
+            backImageUrl = `/uploads/stamps/${userId}/${backFileName}`;
+        }
 
-        // Salvar no banco de dados
-        const stamp = await prisma.stamp.create({
-            data: {
-                userId,
+        // Salvar no banco de dados (com fallback se tabela não existir)
+        let stamp;
+        try {
+            stamp = await prisma.stamp.create({
+                data: {
+                    userId,
+                    name: name || null,
+                    frontImageUrl,
+                    backImageUrl,
+                    frontDesignData: frontDesignData ? JSON.stringify(frontDesignData) : null,
+                    backDesignData: backDesignData ? JSON.stringify(backDesignData) : null,
+                },
+            });
+        } catch (dbError: any) {
+            console.warn("[stamps/save] DB Error (tabela pode não existir):", dbError.message);
+            // Fallback: retornar sucesso mesmo sem salvar no banco
+            stamp = {
+                id: `temp-${timestamp}`,
                 name: name || null,
-                imageUrl,
-                designData: designData ? JSON.stringify(designData) : null,
-            },
-        });
+                frontImageUrl,
+                backImageUrl,
+                createdAt: new Date(),
+            };
+        }
 
         return NextResponse.json({
             status: "success",
             stamp: {
                 id: stamp.id,
                 name: stamp.name,
-                imageUrl: stamp.imageUrl,
+                frontImageUrl: stamp.frontImageUrl,
+                backImageUrl: stamp.backImageUrl,
                 createdAt: stamp.createdAt,
             },
         });

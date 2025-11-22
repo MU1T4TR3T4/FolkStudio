@@ -9,17 +9,36 @@ import { useRouter } from "next/navigation";
 
 type TShirtModel = "short" | "long";
 type TShirtColor = "white" | "black" | "blue";
+type TShirtSide = "front" | "back";
 
 const MOCKUPS = {
     short: {
-        white: "/mockups/camiseta-manga-curta-branca.png",
-        black: "/mockups/camiseta-manga-curta-preta.png",
-        blue: "/mockups/camiseta-manga-curta-azul.png",
+        white: {
+            front: "/mockups/camiseta-manga-curta-branca-frente.png",
+            back: "/mockups/camiseta-manga-curta-branca-costas.png"
+        },
+        black: {
+            front: "/mockups/camiseta-manga-curta-preta-frente.png",
+            back: "/mockups/camiseta-manga-curta-preta-costas.png"
+        },
+        blue: {
+            front: "/mockups/camiseta-manga-curta-azul-frente.png",
+            back: "/mockups/camiseta-manga-curta-azul-costas.png"
+        },
     },
     long: {
-        white: "/mockups/camiseta-manga-longa-branca.png",
-        black: "/mockups/camiseta-manga-longa-preta.png",
-        blue: "/mockups/camiseta-manga-longa-azul.png",
+        white: {
+            front: "/mockups/camiseta-manga-longa-branca-frente.png",
+            back: "/mockups/camiseta-manga-longa-branca-costas.png"
+        },
+        black: {
+            front: "/mockups/camiseta-manga-longa-preta-costas.png", // TEMPORÁRIO: usando costas como fallback
+            back: "/mockups/camiseta-manga-longa-preta-costas.png"
+        },
+        blue: {
+            front: "/mockups/camiseta-manga-longa-azul-frente.png",
+            back: "/mockups/camiseta-manga-longa-azul-costas.png"
+        },
     },
 };
 
@@ -27,7 +46,15 @@ export default function EditorPage() {
     const [image, setImage] = useState<string | null>(null);
     const [model, setModel] = useState<TShirtModel>("short");
     const [color, setColor] = useState<TShirtColor>("white");
-    const [design, setDesign] = useState<DesignProps>({
+    const [side, setSide] = useState<TShirtSide>("front");
+    const [designFront, setDesignFront] = useState<DesignProps>({
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 200,
+        rotation: 0,
+    });
+    const [designBack, setDesignBack] = useState<DesignProps>({
         x: 100,
         y: 100,
         width: 200,
@@ -38,6 +65,9 @@ export default function EditorPage() {
     const [iaPreviewUrl, setIaPreviewUrl] = useState<string | null>(null);
     const [isGeneratingIA, setIsGeneratingIA] = useState(false);
     const [promptText, setPromptText] = useState<string>("");
+
+    const design = side === "front" ? designFront : designBack;
+    const setDesign = side === "front" ? setDesignFront : setDesignBack;
 
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +117,7 @@ export default function EditorPage() {
         const ctx = canvas.getContext("2d");
         if (!ctx) return null;
 
-        const mockupSrc = MOCKUPS[model][color];
+        const mockupSrc = MOCKUPS[model][color][side];
 
         // Carregar imagens
         const loadImage = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
@@ -225,19 +255,33 @@ export default function EditorPage() {
 
         setIsSaving(true);
         try {
-            const finalImageUrl = await generateCanvasImage();
+            // Gerar imagem da frente
+            const currentSide = side;
+            setSide("front");
+            await new Promise(resolve => setTimeout(resolve, 100)); // Aguardar atualização do estado
+            const frontImage = await generateCanvasImage();
 
-            if (!finalImageUrl) {
-                throw new Error("Falha ao gerar imagem");
+            // Gerar imagem das costas
+            setSide("back");
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const backImage = await generateCanvasImage();
+
+            // Restaurar lado original
+            setSide(currentSide);
+
+            if (!frontImage) {
+                throw new Error("Falha ao gerar imagem da frente");
             }
 
             const res = await fetch("/api/stamps/save", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    imageBase64: finalImageUrl,
+                    frontImage,
+                    backImage,
+                    frontDesignData: designFront,
+                    backDesignData: designBack,
                     name: null,
-                    designData: design,
                 }),
             });
 
@@ -312,11 +356,29 @@ export default function EditorPage() {
                 {/* Coluna Esquerda: Área de Edição */}
                 <div className="lg:col-span-2 bg-gray-100 rounded-xl border border-gray-200 shadow-sm p-8 flex items-center justify-center relative overflow-hidden select-none">
 
+                    {/* Toggle Frente/Costas */}
+                    <div className="flex gap-2 mb-4 absolute top-4 left-1/2 transform -translate-x-1/2 z-30">
+                        <Button
+                            onClick={() => setSide("front")}
+                            variant={side === "front" ? "primary" : "outline"}
+                            size="sm"
+                        >
+                            Frente
+                        </Button>
+                        <Button
+                            onClick={() => setSide("back")}
+                            variant={side === "back" ? "primary" : "outline"}
+                            size="sm"
+                        >
+                            Costas
+                        </Button>
+                    </div>
+
                     {/* Container Visual da Camiseta - Tamanho fixo para referência de coordenadas */}
                     <div className="relative w-[400px] h-[500px] bg-white shadow-lg rounded-lg overflow-hidden">
                         {/* Mockup de Fundo */}
                         <img
-                            src={MOCKUPS[model][color]}
+                            src={MOCKUPS[model][color][side]}
                             alt="Mockup Camiseta"
                             className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
                         />
