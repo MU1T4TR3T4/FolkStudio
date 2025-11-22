@@ -402,196 +402,103 @@ export default function EditorPage() {
                             Costas
                         </Button>
                     </div>
-
-                    {/* Container Visual da Camiseta - Tamanho fixo para referência de coordenadas */}
-                    <div className="relative w-[400px] h-[500px] bg-white shadow-lg rounded-lg overflow-hidden">
-                        {/* Mockup de Fundo */}
-                        <img
-                            src={MOCKUPS[model][color][side]}
-                            alt="Mockup Camiseta"
-                            className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
-                        />
-
-                        {/* Área de Edição (Overlay) */}
-                        <div className="absolute inset-0 z-20 overflow-hidden">
-                            {image && (
-                                <EditableImage
-                                    src={image}
-                                    design={design}
-                                    onUpdate={setDesign}
-                                    onDelete={removeImage}
-                                />
-                            )}
-                        </div>
-
-                        {!image && (
-                            <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
-                                <div className="bg-white/80 backdrop-blur px-4 py-2 rounded-full shadow-sm border border-gray-200 text-sm text-gray-500">
-                                    Arraste sua arte aqui ou faça upload
-                                </div>
-                            </div>
-                        )}
+                    <div className="flex gap-3 pt-2">
+                        {(Object.keys(colorMap) as TShirtColor[]).map((c) => (
+                            <button
+                                key={c}
+                                onClick={() => setColor(c)}
+                                className={`w-10 h-10 rounded-full border-2 transition-all ${color === c ? "border-blue-600 scale-110 ring-2 ring-blue-100" : "border-gray-200 hover:scale-105"}`}
+                                style={{ backgroundColor: colorMap[c] }}
+                                title={c === "white" ? "Branco" : c === "black" ? "Preto" : "Azul"}
+                                aria-label={`Selecionar cor ${c}`}
+                            />
+                        ))}
                     </div>
                 </div>
 
-                {/* Coluna Direita: Ferramentas */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 flex flex-col gap-6 overflow-y-auto">
+                {/* Geração com IA via Prompt */}
+                <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-gray-900">Gerar Design com IA</h3>
+                    <textarea
+                        value={promptText}
+                        onChange={(e) => setPromptText(e.target.value)}
+                        placeholder="Descreva o design que você quer na camiseta (ex: 'um dragão azul voando sobre montanhas', 'logo minimalista de café')"
+                        className="w-full h-24 px-3 py-2 text-sm border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500">
+                        💡 A IA usará o modelo e cor selecionados acima
+                    </p>
 
-                    {/* Upload */}
-                    <div className="space-y-3">
-                        <h3 className="text-sm font-semibold text-gray-900">Sua Arte</h3>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleImageUpload}
-                            accept="image/*"
-                            className="hidden"
-                        />
-                        <div
-                            onClick={triggerUpload}
-                            className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors cursor-pointer hover:border-blue-400"
-                        >
-                            <div className="h-10 w-10 bg-blue-50 rounded-full flex items-center justify-center mb-3">
-                                <Upload className="h-5 w-5 text-blue-600" />
+                    {/* Galeria de Imagens Geradas */}
+                    {generatedImages.length > 0 && (
+                        <div className="mt-3">
+                            <h4 className="text-xs font-semibold text-gray-700 mb-2">Designs Gerados</h4>
+                            <div className="grid grid-cols-3 gap-2">
+                                {generatedImages.map((img, index) => (
+                                    <div
+                                        key={index}
+                                        onClick={() => setImage(img)}
+                                        className={`aspect-square border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${image === img ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200 hover:border-purple-400'
+                                            }`}
+                                    >
+                                        <img src={img} alt={`Gerado ${index + 1}`} className="w-full h-full object-cover" />
+                                    </div>
+                                ))}
                             </div>
-                            <p className="text-sm text-gray-600 font-medium">Clique para fazer upload</p>
-                            <p className="text-xs text-gray-400 mt-1">PNG, JPG (max. 5MB)</p>
                         </div>
+                    )}
+                </div>
 
-                        {/* Galeria de Uploads */}
-                        {uploadedImages.length > 0 && (
-                            <div className="mt-3">
-                                <h4 className="text-xs font-semibold text-gray-700 mb-2">Imagens Enviadas</h4>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {uploadedImages.map((img, index) => (
-                                        <div
-                                            key={index}
-                                            onClick={() => setImage(img)}
-                                            className={`aspect-square border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${image === img ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-blue-400'
-                                                }`}
-                                        >
-                                            <img src={img} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                <div className="flex-1"></div>
+
+                {/* Ações Finais */}
+                <div className="space-y-4 pt-6 border-t border-gray-100">
+                    <Button
+                        onClick={handleGenerateIAMockup}
+                        disabled={isGeneratingIA || !promptText.trim()}
+                        className="w-full h-12 text-base flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all hover:scale-[1.02] rounded-xl"
+                    >
+                        {isGeneratingIA ? (
+                            <>
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                Criando Mágica...
+                            </>
+                        ) : (
+                            <>
+                                <Wand2 className="h-5 w-5" />
+                                Gerar Mockup Realista (IA)
+                            </>
                         )}
-                    </div>
+                    </Button>
 
-                    {/* Configurações da Camiseta */}
-                    <div className="space-y-3">
-                        <h3 className="text-sm font-semibold text-gray-900">Modelo e Cor</h3>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button
-                                onClick={() => setModel("short")}
-                                className={`px-3 py-2 text-sm font-medium rounded-md border transition-colors ${model === "short" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"}`}
-                            >
-                                Manga Curta
-                            </button>
-                            <button
-                                onClick={() => setModel("long")}
-                                className={`px-3 py-2 text-sm font-medium rounded-md border transition-colors ${model === "long" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"}`}
-                            >
-                                Manga Longa
-                            </button>
-                        </div>
-                        <div className="flex gap-3 pt-2">
-                            {(Object.keys(colorMap) as TShirtColor[]).map((c) => (
-                                <button
-                                    key={c}
-                                    onClick={() => setColor(c)}
-                                    className={`w-10 h-10 rounded-full border-2 transition-all ${color === c ? "border-blue-600 scale-110 ring-2 ring-blue-100" : "border-gray-200 hover:scale-105"}`}
-                                    style={{ backgroundColor: colorMap[c] }}
-                                    title={c === "white" ? "Branco" : c === "black" ? "Preto" : "Azul"}
-                                    aria-label={`Selecionar cor ${c}`}
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Geração com IA via Prompt */}
-                    <div className="space-y-3">
-                        <h3 className="text-sm font-semibold text-gray-900">Gerar Design com IA</h3>
-                        <textarea
-                            value={promptText}
-                            onChange={(e) => setPromptText(e.target.value)}
-                            placeholder="Descreva o design que você quer na camiseta (ex: 'um dragão azul voando sobre montanhas', 'logo minimalista de café')"
-                            className="w-full h-24 px-3 py-2 text-sm border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <p className="text-xs text-gray-500">
-                            💡 A IA usará o modelo e cor selecionados acima
-                        </p>
-
-                        {/* Galeria de Imagens Geradas */}
-                        {generatedImages.length > 0 && (
-                            <div className="mt-3">
-                                <h4 className="text-xs font-semibold text-gray-700 mb-2">Designs Gerados</h4>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {generatedImages.map((img, index) => (
-                                        <div
-                                            key={index}
-                                            onClick={() => setImage(img)}
-                                            className={`aspect-square border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${image === img ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200 hover:border-purple-400'
-                                                }`}
-                                        >
-                                            <img src={img} alt={`Gerado ${index + 1}`} className="w-full h-full object-cover" />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex-1"></div>
-
-                    {/* Ações Finais */}
-                    <div className="space-y-4 pt-6 border-t border-gray-100">
+                    <div className="flex flex-col gap-3">
                         <Button
-                            onClick={handleGenerateIAMockup}
-                            disabled={isGeneratingIA || !promptText.trim()}
-                            className="w-full h-12 text-base flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all hover:scale-[1.02] rounded-xl"
+                            onClick={handleDownload}
+                            disabled={!image}
+                            variant="outline"
+                            className="w-full h-11 flex items-center justify-center gap-2 border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl"
                         >
-                            {isGeneratingIA ? (
-                                <>
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                    Criando Mágica...
-                                </>
-                            ) : (
-                                <>
-                                    <Wand2 className="h-5 w-5" />
-                                    Gerar Mockup Realista (IA)
-                                </>
-                            )}
+                            <Download className="h-4 w-4" />
+                            Baixar Modelo
                         </Button>
 
-                        <div className="flex flex-col gap-3">
-                            <Button
-                                onClick={handleDownload}
-                                disabled={!image}
-                                variant="outline"
-                                className="w-full h-11 flex items-center justify-center gap-2 border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl"
-                            >
-                                <Download className="h-4 w-4" />
-                                Baixar Modelo
-                            </Button>
-
-                            <Button
-                                onClick={handleSaveStamp}
-                                disabled={isSaving || !image}
-                                className="w-full h-11 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm rounded-xl"
-                            >
-                                {isSaving ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Save className="h-4 w-4" />
-                                )}
-                                Salvar Modelo
-                            </Button>
-                        </div>
+                        <Button
+                            onClick={handleSaveStamp}
+                            disabled={isSaving || !image}
+                            className="w-full h-11 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm rounded-xl"
+                        >
+                            {isSaving ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Save className="h-4 w-4" />
+                            )}
+                            Salvar Modelo
+                        </Button>
                     </div>
-
                 </div>
+
             </div>
         </div>
+        </div >
     );
 }
