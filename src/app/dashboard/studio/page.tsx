@@ -442,6 +442,25 @@ export default function EditorPage() {
                             <p className="text-sm text-gray-600 font-medium">Clique para fazer upload</p>
                             <p className="text-xs text-gray-400 mt-1">PNG, JPG (max. 5MB)</p>
                         </div>
+
+                        {/* Galeria de Uploads */}
+                        {uploadedImages.length > 0 && (
+                            <div className="mt-3">
+                                <h4 className="text-xs font-semibold text-gray-700 mb-2">Imagens Enviadas</h4>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {uploadedImages.map((img, index) => (
+                                        <div
+                                            key={index}
+                                            onClick={() => setImage(img)}
+                                            className={`aspect-square border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${image === img ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-blue-400'
+                                                }`}
+                                        >
+                                            <img src={img} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Configurações da Camiseta */}
@@ -487,6 +506,25 @@ export default function EditorPage() {
                         <p className="text-xs text-gray-500">
                             💡 A IA usará o modelo e cor selecionados acima
                         </p>
+
+                        {/* Galeria de Imagens Geradas */}
+                        {generatedImages.length > 0 && (
+                            <div className="mt-3">
+                                <h4 className="text-xs font-semibold text-gray-700 mb-2">Designs Gerados</h4>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {generatedImages.map((img, index) => (
+                                        <div
+                                            key={index}
+                                            onClick={() => setImage(img)}
+                                            className={`aspect-square border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${image === img ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200 hover:border-purple-400'
+                                                }`}
+                                        >
+                                            <img src={img} alt={`Gerado ${index + 1}`} className="w-full h-full object-cover" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex-1"></div>
