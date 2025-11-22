@@ -23,12 +23,11 @@ export default function EstampasPage() {
         loadStamps();
     }, []);
 
-    async function loadStamps() {
+    function loadStamps() {
         try {
-            const res = await fetch("/api/stamps/list");
-            const data = await res.json();
-            if (data.status === "success") {
-                setStamps(data.stamps);
+            const savedStamps = localStorage.getItem("folk_studio_stamps");
+            if (savedStamps) {
+                setStamps(JSON.parse(savedStamps));
             }
         } catch (error) {
             toast.error("Erro ao carregar estampas");
@@ -37,20 +36,14 @@ export default function EstampasPage() {
         }
     }
 
-    async function handleDelete(stampId: string) {
+    function handleDelete(stampId: string) {
         if (!confirm("Tem certeza que deseja deletar esta estampa?")) return;
 
         try {
-            const res = await fetch(`/api/stamps/delete?id=${stampId}`, {
-                method: "DELETE",
-            });
-            const data = await res.json();
-            if (data.status === "success") {
-                toast.success("Estampa deletada!");
-                loadStamps();
-            } else {
-                toast.error(data.message);
-            }
+            const updatedStamps = stamps.filter(s => s.id !== stampId);
+            setStamps(updatedStamps);
+            localStorage.setItem("folk_studio_stamps", JSON.stringify(updatedStamps));
+            toast.success("Estampa deletada!");
         } catch (error) {
             toast.error("Erro ao deletar estampa");
         }

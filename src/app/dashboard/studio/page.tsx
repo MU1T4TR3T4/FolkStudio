@@ -224,33 +224,30 @@ export default function EditorPage() {
                 throw new Error("Falha ao gerar imagem");
             }
 
-            // Converter design original para base64 para salvar também
-            const response = await fetch(image);
-            const blob = await response.blob();
-            const reader = new FileReader();
-            const originalDesignBase64 = await new Promise<string>((resolve) => {
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.readAsDataURL(blob);
-            });
+            // Simular delay
+            await new Promise(resolve => setTimeout(resolve, 500));
 
-            const res = await fetch("/api/orders/create", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    previewUrl: finalImageUrl, // Usa a imagem da IA se existir, senão usa o Canvas
-                    designUrl: originalDesignBase64,
-                    model,
-                    color
-                }),
-            });
+            const newOrder = {
+                id: crypto.randomUUID(),
+                imageUrl: finalImageUrl,
+                color,
+                material: "algodao", // Default
+                sizes: { P: 0, M: 1, G: 0, GG: 0, XG: 0 }, // Default: 1 M
+                totalQty: 1,
+                observations: null,
+                status: "Pendente",
+                createdAt: new Date().toISOString(),
+            };
 
-            const data = await res.json();
-            if (data.status === "success") {
-                toast.success("Pedido salvo com sucesso!");
-                router.push("/dashboard/pedidos");
-            } else {
-                toast.error("Erro ao salvar pedido: " + data.message);
-            }
+            // Salvar no localStorage
+            const savedOrders = localStorage.getItem("folk_studio_orders");
+            const orders = savedOrders ? JSON.parse(savedOrders) : [];
+            orders.unshift(newOrder);
+            localStorage.setItem("folk_studio_orders", JSON.stringify(orders));
+
+            toast.success("Pedido salvo com sucesso!");
+            router.push("/dashboard/orders");
+
         } catch (error) {
             console.error(error);
             toast.error("Erro ao salvar pedido.");
@@ -285,25 +282,23 @@ export default function EditorPage() {
                 throw new Error("Falha ao gerar imagem da frente");
             }
 
-            const res = await fetch("/api/stamps/save", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    frontImage,
-                    backImage,
-                    frontDesignData: designFront,
-                    backDesignData: designBack,
-                    name: null,
-                }),
-            });
+            const newStamp = {
+                id: crypto.randomUUID(),
+                name: `Estampa ${new Date().toLocaleDateString()}`,
+                frontImageUrl: frontImage,
+                backImageUrl: backImage,
+                createdAt: new Date().toISOString(),
+            };
 
-            const data = await res.json();
-            if (data.status === "success") {
-                toast.success("Modelo salvo com sucesso!");
-                router.push("/dashboard/estampas");
-            } else {
-                toast.error("Erro ao salvar modelo: " + data.message);
-            }
+            // Salvar no localStorage
+            const savedStamps = localStorage.getItem("folk_studio_stamps");
+            const stamps = savedStamps ? JSON.parse(savedStamps) : [];
+            stamps.unshift(newStamp);
+            localStorage.setItem("folk_studio_stamps", JSON.stringify(stamps));
+
+            toast.success("Modelo salvo com sucesso!");
+            router.push("/dashboard/estampas");
+
         } catch (error) {
             console.error(error);
             toast.error("Erro ao salvar modelo.");

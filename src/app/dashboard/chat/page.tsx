@@ -20,21 +20,27 @@ export default function ChatPage() {
 
     useEffect(() => {
         loadMessages();
-        // Auto-refresh a cada 5 segundos
-        const interval = setInterval(loadMessages, 5000);
-        return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
-    async function loadMessages() {
+    function loadMessages() {
         try {
-            const res = await fetch("/api/chat/list");
-            const data = await res.json();
-            if (data.status === "success") {
-                setMessages(data.messages);
+            const savedMessages = localStorage.getItem("folk_studio_chat");
+            if (savedMessages) {
+                setMessages(JSON.parse(savedMessages));
+            } else {
+                // Mensagem inicial de boas-vindas
+                const initialMessage: Message = {
+                    id: "welcome",
+                    content: "Olá! Como podemos ajudar você hoje?",
+                    isAdmin: true,
+                    createdAt: new Date().toISOString(),
+                };
+                setMessages([initialMessage]);
+                localStorage.setItem("folk_studio_chat", JSON.stringify([initialMessage]));
             }
         } catch (error) {
             console.error(error);
@@ -46,19 +52,34 @@ export default function ChatPage() {
 
         setSending(true);
         try {
-            const res = await fetch("/api/chat/send", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ content: newMessage }),
-            });
+            // Simular delay
+            await new Promise(resolve => setTimeout(resolve, 300));
 
-            const data = await res.json();
-            if (data.status === "success") {
-                setNewMessage("");
-                loadMessages();
-            } else {
-                toast.error("Erro ao enviar mensagem");
-            }
+            const newMsg: Message = {
+                id: crypto.randomUUID(),
+                content: newMessage,
+                isAdmin: false,
+                createdAt: new Date().toISOString(),
+            };
+
+            const updatedMessages = [...messages, newMsg];
+            setMessages(updatedMessages);
+            localStorage.setItem("folk_studio_chat", JSON.stringify(updatedMessages));
+            setNewMessage("");
+
+            // Simular resposta automática do admin após 2 segundos
+            setTimeout(() => {
+                const autoReply: Message = {
+                    id: crypto.randomUUID(),
+                    content: "Obrigado pelo contato! Nossa equipe responderá em breve.",
+                    isAdmin: true,
+                    createdAt: new Date().toISOString(),
+                };
+                const withReply = [...updatedMessages, autoReply];
+                setMessages(withReply);
+                localStorage.setItem("folk_studio_chat", JSON.stringify(withReply));
+            }, 2000);
+
         } catch (error) {
             console.error(error);
             toast.error("Erro ao enviar mensagem");
@@ -99,8 +120,8 @@ export default function ChatPage() {
                         >
                             <div
                                 className={`max-w-[70%] rounded-lg px-4 py-2 ${msg.isAdmin
-                                        ? "bg-gray-100 text-gray-900"
-                                        : "bg-blue-600 text-white"
+                                    ? "bg-gray-100 text-gray-900"
+                                    : "bg-blue-600 text-white"
                                     }`}
                             >
                                 <p className="text-sm">{msg.content}</p>
