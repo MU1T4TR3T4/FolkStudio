@@ -5,6 +5,6 @@ dotenv.config();
 
 export default defineConfig({
   datasource: {
-    url: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/db',
+    url: process.env.DATABASE_URL || 'file:./prisma/dev.db',
   },
 });
