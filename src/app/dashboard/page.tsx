@@ -3,12 +3,12 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const recentDesigns = [
-    { id: 1, name: "Camiseta Logo Azul", type: "Estampa Frontal", image: "https://via.placeholder.com/300x300" },
-    { id: 2, name: "Camiseta Evento Tech", type: "Full Print", image: "https://via.placeholder.com/300x300" },
-    { id: 3, name: "Uniforme Staff", type: "Bordado", image: "https://via.placeholder.com/300x300" },
-    { id: 4, name: "Camiseta Minimalista", type: "Estampa Costas", image: "https://via.placeholder.com/300x300" },
-    { id: 5, name: "Edição Limitada", type: "Estampa Frontal", image: "https://via.placeholder.com/300x300" },
-    { id: 6, name: "Camiseta Básica", type: "Sem Estampa", image: "https://via.placeholder.com/300x300" },
+    { id: 1, name: "Camiseta Logo Azul", type: "Estampa Frontal", image: "/imagens dashboard/camiseta-logo-azul.png" },
+    { id: 2, name: "Camiseta Evento Tech", type: "Full Print", image: "/imagens dashboard/camiseta-evento-tech.png" },
+    { id: 3, name: "Uniforme Staff", type: "Bordado", image: "/imagens dashboard/camiseta-staff.png" },
+    { id: 4, name: "Camiseta Minimalista", type: "Estampa Costas", image: "/imagens dashboard/camiseta-minimalista.png" },
+    { id: 5, name: "Edição Limitada", type: "Estampa Frontal", image: "/imagens dashboard/camiseta-edicao-limitada.png" },
+    { id: 6, name: "Camiseta Básica", type: "Sem Estampa", image: "/imagens dashboard/camiseta-basica.png" },
 ];
 
 export default function DashboardPage() {
