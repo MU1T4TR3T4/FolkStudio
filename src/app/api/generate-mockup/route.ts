@@ -61,13 +61,15 @@ export async function POST(req: Request) {
         }
 
         console.log("[generate-mockup] Design generated, removing background...");
+        console.log("[generate-mockup] Design URL:", designUrl);
+        console.log("[generate-mockup] Design URL type:", typeof designUrl);
 
         // Passo 2: Remover fundo com rembg
         const transparentOutput = await replicate.run(
             "cjwbw/rembg:fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003",
             {
                 input: {
-                    image: designUrl
+                    image: String(designUrl) // Garantir que é string
                 }
             } as any
         );
