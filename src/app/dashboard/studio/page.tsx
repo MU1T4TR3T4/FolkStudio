@@ -272,36 +272,99 @@ export default function EditorPage() {
         }
     };
 
+    // Função auxiliar para gerar imagem de um lado específico
+    const generateSideImage = async (
+        sideImage: string | null,
+        sideDesign: DesignProps,
+        sideType: TShirtSide
+    ): Promise<string | null> => {
+        if (!canvasRef.current || !sideImage) return null;
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+
+        const mockupSrc = MOCKUPS[model][color][sideType];
+
+        const loadImage = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = src;
+        });
+
+        try {
+            const [mockupImg, designImg] = await Promise.all([
+                loadImage(mockupSrc),
+                loadImage(sideImage)
+            ]);
+
+            canvas.width = mockupImg.width;
+            canvas.height = mockupImg.height;
+
+            // Desenhar mockup
+            ctx.drawImage(mockupImg, 0, 0);
+
+            // Calcular escala visual
+            const visualScale = canvas.width / 400;
+
+            ctx.save();
+
+            // Aplicar transformações
+            const centerX = (sideDesign.x + sideDesign.width / 2) * visualScale;
+            const centerY = (sideDesign.y + sideDesign.height / 2) * visualScale;
+
+            ctx.translate(centerX, centerY);
+            ctx.rotate((sideDesign.rotation * Math.PI) / 180);
+            ctx.translate(-centerX, -centerY);
+
+            ctx.globalCompositeOperation = "multiply";
+
+            // Desenhar logo
+            ctx.drawImage(
+                designImg,
+                sideDesign.x * visualScale,
+                sideDesign.y * visualScale,
+                sideDesign.width * visualScale,
+                sideDesign.height * visualScale
+            );
+
+            ctx.restore();
+
+            return canvas.toDataURL("image/png");
+        } catch (error) {
+            console.error("Erro ao gerar imagem do lado:", error);
+            return null;
+        }
+    };
+
     const handleSaveStamp = async () => {
-        if (!image) {
-            toast.error("Adicione uma estampa primeiro.");
+        if (!imageFront && !imageBack) {
+            toast.error("Adicione uma estampa em pelo menos um lado.");
             return;
         }
 
         setIsSaving(true);
         try {
-            // Gerar imagem da frente
-            const currentSide = side;
-            setSide("front");
-            await new Promise(resolve => setTimeout(resolve, 100)); // Aguardar atualização do estado
-            const frontImage = await generateCanvasImage();
+            // Gerar imagem da frente (se houver logo na frente)
+            const frontImage = imageFront
+                ? await generateSideImage(imageFront, designFront, "front")
+                : null;
 
-            // Gerar imagem das costas
-            setSide("back");
-            await new Promise(resolve => setTimeout(resolve, 100));
-            const backImage = await generateCanvasImage();
+            // Gerar imagem das costas (se houver logo nas costas)
+            const backImage = imageBack
+                ? await generateSideImage(imageBack, designBack, "back")
+                : null;
 
-            // Restaurar lado original
-            setSide(currentSide);
-
-            if (!frontImage) {
-                throw new Error("Falha ao gerar imagem da frente");
+            if (!frontImage && !backImage) {
+                throw new Error("Falha ao gerar imagens");
             }
 
             const newStamp = {
                 id: crypto.randomUUID(),
                 name: `Modelo ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
-                frontImageUrl: frontImage,
+                frontImageUrl: frontImage || "",
                 backImageUrl: backImage || null,
                 createdAt: new Date().toISOString(),
                 color,
