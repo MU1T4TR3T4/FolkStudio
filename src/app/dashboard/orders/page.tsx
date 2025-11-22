@@ -156,8 +156,35 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setImage(reader.result as string);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Redimensionar se for muito grande (max 1024px)
+                    const MAX_SIZE = 1024;
+                    if (width > MAX_SIZE || height > MAX_SIZE) {
+                        if (width > height) {
+                            height *= MAX_SIZE / width;
+                            width = MAX_SIZE;
+                        } else {
+                            width *= MAX_SIZE / height;
+                            height = MAX_SIZE;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+
+                    // Converter para Base64 com qualidade reduzida (0.8)
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                    setImage(compressedBase64);
+                };
+                img.src = event.target?.result as string;
             };
             reader.readAsDataURL(file);
         }

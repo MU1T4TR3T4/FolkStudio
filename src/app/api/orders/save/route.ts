@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import fs from "fs";
-import path from "path";
+
+// Aumentar limite de tamanho do body para aceitar imagens Base64
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '10mb',
+        },
+    },
+};
 
 export async function POST(req: Request) {
     try {
@@ -18,26 +25,14 @@ export async function POST(req: Request) {
         // TODO: Pegar userId real da sessão
         const userId = "demo-user";
 
-        // Criar diretório do usuário se não existir
-        const userDir = path.join(process.cwd(), "public", "uploads", "orders", userId);
-        if (!fs.existsSync(userDir)) {
-            fs.mkdirSync(userDir, { recursive: true });
-        }
+        // Na Vercel, não podemos salvar arquivos no sistema de arquivos (fs).
+        // Vamos salvar a imagem Base64 diretamente no banco de dados por enquanto.
+        // Nota: Em produção real com muitos dados, o ideal seria usar S3/Blob Storage.
 
-        // Salvar imagem
-        const timestamp = Date.now();
-        const fileName = `order-${timestamp}.png`;
-        const filePath = path.join(userDir, fileName);
-        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, "base64");
-        fs.writeFileSync(filePath, buffer);
-        const imageUrl = `/uploads/orders/${userId}/${fileName}`;
-
-        // Salvar no banco
         const order = await prisma.order.create({
             data: {
                 userId,
-                imageUrl,
+                imageUrl: imageBase64, // Salvando Base64 direto
                 color,
                 material,
                 sizes: JSON.stringify(sizes),
