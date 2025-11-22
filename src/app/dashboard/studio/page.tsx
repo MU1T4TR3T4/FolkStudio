@@ -81,6 +81,15 @@ export default function EditorPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
+    // Carregar históricos do LocalStorage ao iniciar
+    useEffect(() => {
+        const savedGenerated = localStorage.getItem("folk_studio_generated_designs");
+        if (savedGenerated) setGeneratedImages(JSON.parse(savedGenerated));
+
+        const savedUploads = localStorage.getItem("folk_studio_uploads");
+        if (savedUploads) setUploadedImages(JSON.parse(savedUploads));
+    }, []);
+
     // Reset design position when image changes
     useEffect(() => {
         if (image) {
@@ -101,13 +110,20 @@ export default function EditorPage() {
                 toast.error("A imagem deve ter no máximo 5MB.");
                 return;
             }
-            const imageUrl = URL.createObjectURL(file);
-            setImage(imageUrl);
 
-            // Adicionar à galeria de uploads
-            setUploadedImages(prev => [...prev, imageUrl]);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const imageUrl = reader.result as string;
+                setImage(imageUrl);
 
-            toast.success("Imagem carregada com sucesso!");
+                // Adicionar à galeria de uploads e salvar no LocalStorage
+                const newUploads = [...uploadedImages, imageUrl];
+                setUploadedImages(newUploads);
+                localStorage.setItem("folk_studio_uploads", JSON.stringify(newUploads));
+
+                toast.success("Imagem carregada com sucesso!");
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -284,9 +300,9 @@ export default function EditorPage() {
 
             const newStamp = {
                 id: crypto.randomUUID(),
-                name: `Estampa ${new Date().toLocaleDateString()}`,
+                name: `Modelo ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
                 frontImageUrl: frontImage,
-                backImageUrl: backImage,
+                backImageUrl: backImage || null,
                 createdAt: new Date().toISOString(),
             };
 
@@ -327,8 +343,10 @@ export default function EditorPage() {
             const data = await res.json();
 
             if (data.status === "success" && data.generatedLogo) {
-                // Adicionar à galeria de imagens geradas
-                setGeneratedImages(prev => [...prev, data.generatedLogo]);
+                // Adicionar à galeria de imagens geradas e salvar no LocalStorage
+                const newGenerated = [...generatedImages, data.generatedLogo];
+                setGeneratedImages(newGenerated);
+                localStorage.setItem("folk_studio_generated_designs", JSON.stringify(newGenerated));
 
                 // Carregar design gerado como imagem posicionável no lado atual
                 setImage(data.generatedLogo);
