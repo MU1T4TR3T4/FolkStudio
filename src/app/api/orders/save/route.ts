@@ -6,7 +6,7 @@ import path from "path";
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { imageBase64, color, material, sizes, totalQty } = body;
+        const { imageBase64, color, material, sizes, totalQty, observations } = body;
 
         if (!imageBase64 || !color || !material || !sizes || !totalQty) {
             return NextResponse.json(
@@ -42,6 +42,7 @@ export async function POST(req: Request) {
                 material,
                 sizes: JSON.stringify(sizes),
                 totalQty,
+                observations: observations || null,
                 status: "Pendente",
             },
         });

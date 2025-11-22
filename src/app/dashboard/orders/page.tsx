@@ -149,6 +149,7 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         XG: 0,
     });
     const [material, setMaterial] = useState("algodao");
+    const [observations, setObservations] = useState("");
     const [saving, setSaving] = useState(false);
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,6 +177,7 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                     material,
                     sizes,
                     totalQty: totalQuantity,
+                    observations: observations.trim() || null,
                 }),
             });
 
@@ -295,6 +297,23 @@ function NewOrderForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Observações */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                            Observações (Opcional)
+                        </label>
+                        <textarea
+                            value={observations}
+                            onChange={(e) => setObservations(e.target.value)}
+                            placeholder="Adicione observações sobre o pedido..."
+                            className="w-full h-20 px-3 py-2 text-sm border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            maxLength={500}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                            {observations.length}/500 caracteres
+                        </p>
                     </div>
 
                     {/* Botões */}

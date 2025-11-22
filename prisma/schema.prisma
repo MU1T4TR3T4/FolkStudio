@@ -16,16 +16,17 @@ model User {
 }
 
 model Order {
-  id         String   @id @default(uuid())
-  userId     String
-  imageUrl   String
-  color      String
-  material   String
-  sizes      String   // JSON string: {"P": 5, "M": 10, ...}
-  totalQty   Int
-  status     String   @default("Pendente") // Pendente, Em Produção, Concluído
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id])
+  id           String   @id @default(uuid())
+  userId       String
+  imageUrl     String
+  color        String
+  material     String
+  sizes        String   // JSON string: {"P": 5, "M": 10, ...}
+  totalQty     Int
+  observations String?  // Observações do cliente
+  status       String   @default("Pendente") // Pendente, Em Produção, Concluído
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model Stamp {
