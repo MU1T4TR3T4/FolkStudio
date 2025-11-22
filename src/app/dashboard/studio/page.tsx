@@ -218,9 +218,8 @@ export default function EditorPage() {
     };
 
     async function handleGenerateIAMockup() {
-        // Validar: precisa de prompt OU imagem
-        if (!promptText.trim() && !image) {
-            toast.error("Por favor, descreva o design ou faça upload de uma logo.");
+        if (!promptText.trim()) {
+            toast.error("Por favor, descreva o design que você quer.");
             return;
         }
 
@@ -228,39 +227,22 @@ export default function EditorPage() {
         setIaPreviewUrl(null);
 
         try {
-            let base64Image = null;
-
-            // Se tem imagem, converter para Base64
-            if (image) {
-                const response = await fetch(image);
-                const blob = await response.blob();
-                const reader = new FileReader();
-                base64Image = await new Promise<string>((resolve) => {
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.readAsDataURL(blob);
-                });
-            }
-
             const res = await fetch("/api/generate-mockup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    logoBase64: base64Image,
-                    modelo: model,
-                    cor: color,
-                    design: image ? design : undefined,
-                    prompt: promptText.trim() || undefined // Enviar prompt se fornecido
+                    prompt: promptText.trim()
                 }),
             });
 
             const data = await res.json();
 
-            if (data.status === "success" && data.resultUrl) {
-                // A API já retorna Base64, então podemos usar diretamente
-                setIaPreviewUrl(data.resultUrl);
-                toast.success("Mockup realista gerado com sucesso!");
+            if (data.status === "success" && data.generatedLogo) {
+                // Carregar design gerado como imagem posicionável
+                setImage(data.generatedLogo);
+                toast.success("Design gerado! Posicione no mockup.");
             } else {
-                throw new Error(data.message || "Erro ao gerar mockup.");
+                throw new Error(data.message || "Erro ao gerar design.");
             }
         } catch (error: any) {
             console.error("Erro IA:", error);
@@ -433,7 +415,7 @@ export default function EditorPage() {
                     <div className="space-y-4 pt-6 border-t border-gray-100">
                         <Button
                             onClick={handleGenerateIAMockup}
-                            disabled={isGeneratingIA || !image}
+                            disabled={isGeneratingIA || !promptText.trim()}
                             className="w-full h-12 text-base flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all hover:scale-[1.02] rounded-xl"
                         >
                             {isGeneratingIA ? (
