@@ -499,6 +499,6 @@ export default function EditorPage() {
 
             </div>
         </div>
-        </div >
+
     );
 }

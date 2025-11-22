@@ -1,14 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-// Aumentar limite de tamanho do body para aceitar imagens Base64
-export const config = {
-    api: {
-        bodyParser: {
-            sizeLimit: '10mb',
-        },
-    },
-};
+// Configuração removida pois não é suportada no App Router
+// O limite de tamanho deve ser configurado no next.config.js ou aceitar o padrão (4MB)
 
 export async function POST(req: Request) {
     try {
