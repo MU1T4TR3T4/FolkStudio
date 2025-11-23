@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { LayoutDashboard, Image, Palette, ShoppingBag, MessageSquare } from "lucide-react";
+import Image from "next/image";
+import { LayoutDashboard, Image as ImageIcon, Palette, ShoppingBag, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
     { name: "Início", href: "/dashboard", icon: LayoutDashboard },
-    // { name: "Minhas Artes", href: "/dashboard/designs", icon: Image },
+    // { name: "Minhas Artes", href: "/dashboard/designs", icon: ImageIcon },
     { name: "Criar Arte", href: "/dashboard/studio", icon: Palette },
     { name: "Pedidos", href: "/dashboard/orders", icon: ShoppingBag },
-    { name: "Minhas Estampas", href: "/dashboard/estampas", icon: Image },
+    { name: "Minhas Estampas", href: "/dashboard/estampas", icon: ImageIcon },
     { name: "Chat", href: "/dashboard/chat", icon: MessageSquare },
 ];
 
@@ -16,10 +17,13 @@ export function Sidebar() {
         <div className="flex h-full w-64 flex-col bg-white border-r border-gray-200">
             <div className="flex h-16 items-center px-6 border-b border-gray-200">
                 <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                        <Palette className="h-5 w-5 text-white" />
-                    </div>
-                    <span className="text-xl font-bold text-gray-900">PrintSaaS</span>
+                    <Image
+                        src="/logo/folk-logo-sem-fundo1.png"
+                        alt="FOLK Logo"
+                        width={100}
+                        height={40}
+                        className="object-contain"
+                    />
                 </div>
             </div>
 

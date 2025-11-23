@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Upload, ShoppingBag, Package, CheckCircle, Clock, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Upload, ShoppingBag, Package, CheckCircle, Clock, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
+import { saveImage, getImage } from "@/lib/storage";
 
 interface Order {
     id: string;
@@ -15,9 +17,13 @@ interface Order {
     observations: string | null;
     status: string;
     createdAt: string;
+    backImageUrl?: string | null;
+    artImageUrl?: string | null;
+    backArtImageUrl?: string | null;
 }
 
 export default function OrdersPage() {
+    const router = useRouter();
     const [showNewOrderForm, setShowNewOrderForm] = useState(false);
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
@@ -44,11 +50,32 @@ export default function OrdersPage() {
         }
     }
 
-    function loadOrders() {
+    async function loadOrders() {
         try {
             const savedOrders = localStorage.getItem("folk_studio_orders");
             if (savedOrders) {
-                setOrders(JSON.parse(savedOrders));
+                const parsedOrders: Order[] = JSON.parse(savedOrders);
+
+                // Carregar imagens do IDB se necessário
+                const processedOrders = await Promise.all(parsedOrders.map(async (order) => {
+                    const newOrder = { ...order };
+                    if (newOrder.imageUrl?.startsWith('idb:')) {
+                        const key = newOrder.imageUrl.replace('idb:', '');
+                        const img = await getImage(key);
+                        if (img) newOrder.imageUrl = img;
+                    }
+                    if (newOrder.backImageUrl?.startsWith('idb:')) {
+                        const key = newOrder.backImageUrl.replace('idb:', '');
+                        const img = await getImage(key);
+                        if (img) newOrder.backImageUrl = img;
+                    }
+                    // Não precisamos carregar as artes originais aqui para a lista, apenas para detalhes se necessário,
+                    // mas para manter consistência, poderíamos. Por performance, vamos carregar só o necessário para renderizar a lista.
+                    // A lista usa imageUrl.
+                    return newOrder;
+                }));
+
+                setOrders(processedOrders);
             }
         } catch (error) {
             console.error("Erro ao carregar pedidos:", error);
@@ -171,6 +198,17 @@ export default function OrdersPage() {
                                         </p>
                                     )}
                                 </div>
+                                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                        onClick={() => router.push(`/dashboard/orders/${order.id}`)}
+                                    >
+                                        <Eye className="h-4 w-4" />
+                                        Ver Detalhes e Chat
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -193,7 +231,12 @@ function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void
     });
     const [material, setMaterial] = useState("algodao");
     const [observations, setObservations] = useState("");
+
     const [saving, setSaving] = useState(false);
+
+    // Novos estados para arte original
+    const [artImage, setArtImage] = useState<string | null>(null);
+    const [backArtImage, setBackArtImage] = useState<string | null>(null);
 
     const [showStampSelector, setShowStampSelector] = useState(false);
     const [savedStamps, setSavedStamps] = useState<any[]>([]);
@@ -204,6 +247,53 @@ function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void
             setSavedStamps(JSON.parse(stamps));
         }
     }, []);
+
+
+    // Carregar artes originais do initialData (quando vem de uma estampa)
+    useEffect(() => {
+        async function loadInitialArt() {
+            // Carregar mockup da frente
+            if (initialData?.imageUrl) {
+                let front = initialData.imageUrl;
+                if (front.startsWith('idb:')) {
+                    const val = await getImage(front.replace('idb:', ''));
+                    if (val) front = val;
+                }
+                setImage(front);
+            }
+
+            // Carregar arte original da frente
+            if (initialData?.logoFrontUrl) {
+                let logoFront = initialData.logoFrontUrl;
+                if (logoFront.startsWith('idb:')) {
+                    const val = await getImage(logoFront.replace('idb:', ''));
+                    if (val) logoFront = val;
+                }
+                setArtImage(logoFront);
+            }
+
+            // Carregar arte original das costas
+            if (initialData?.logoBackUrl) {
+                let logoBack = initialData.logoBackUrl;
+                if (logoBack.startsWith('idb:')) {
+                    const val = await getImage(logoBack.replace('idb:', ''));
+                    if (val) logoBack = val;
+                }
+                setBackArtImage(logoBack);
+            }
+
+            // Carregar mockup das costas
+            if (initialData?.backImageUrl) {
+                let back = initialData.backImageUrl;
+                if (back.startsWith('idb:')) {
+                    const val = await getImage(back.replace('idb:', ''));
+                    if (val) back = val;
+                }
+                setBackImage(back);
+            }
+        }
+        loadInitialArt();
+    }, [initialData]);
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -236,6 +326,9 @@ function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void
                     // Converter para Base64 com qualidade média (0.7)
                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
                     setImage(compressedBase64);
+                    // Se for upload manual, a imagem É a arte
+                    setArtImage(compressedBase64);
+                    setBackArtImage(null);
                 };
                 img.src = event.target?.result as string;
             };
@@ -243,10 +336,38 @@ function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void
         }
     };
 
-    const handleSelectStamp = (stamp: any) => {
-        setImage(stamp.frontImageUrl);
-        setBackImage(stamp.backImageUrl || null);
+    const handleSelectStamp = async (stamp: any) => {
+        let front = stamp.frontImageUrl;
+        let back = stamp.backImageUrl;
+        let logoFront = stamp.logoFrontUrl;
+        let logoBack = stamp.logoBackUrl;
+
+        // Resolver imagens do IDB se necessário
+        if (front?.startsWith('idb:')) {
+            const val = await getImage(front.replace('idb:', ''));
+            if (val) front = val;
+        }
+        if (back?.startsWith('idb:')) {
+            const val = await getImage(back.replace('idb:', ''));
+            if (val) back = val;
+        }
+        if (logoFront?.startsWith('idb:')) {
+            const val = await getImage(logoFront.replace('idb:', ''));
+            if (val) logoFront = val;
+        }
+        if (logoBack?.startsWith('idb:')) {
+            const val = await getImage(logoBack.replace('idb:', ''));
+            if (val) logoBack = val;
+        }
+
+        setImage(front);
+        setBackImage(back || null);
         if (stamp.color) setColor(stamp.color);
+
+        // Capturar arte original se existir
+        setArtImage(logoFront || null);
+        setBackArtImage(logoBack || null);
+
         setShowStampSelector(false);
         toast.success("Estampa selecionada!");
     };
@@ -259,9 +380,17 @@ function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void
             // Simular delay de rede
             await new Promise(resolve => setTimeout(resolve, 800));
 
+            const orderId = crypto.randomUUID();
+
+            // Salvar imagens no IDB para não estourar localStorage
+            if (image) await saveImage(`order-front-${orderId}`, image);
+            if (backImage) await saveImage(`order-back-${orderId}`, backImage);
+            if (artImage) await saveImage(`order-art-front-${orderId}`, artImage);
+            if (backArtImage) await saveImage(`order-art-back-${orderId}`, backArtImage);
+
             const newOrder: Order = {
-                id: crypto.randomUUID(),
-                imageUrl: image || "",
+                id: orderId,
+                imageUrl: `idb:order-front-${orderId}`,
                 color,
                 material,
                 sizes,
@@ -269,6 +398,9 @@ function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void
                 observations: observations.trim() || null,
                 status: "Pendente",
                 createdAt: new Date().toISOString(),
+                backImageUrl: backImage ? `idb:order-back-${orderId}` : null,
+                artImageUrl: artImage ? `idb:order-art-front-${orderId}` : null,
+                backArtImageUrl: backArtImage ? `idb:order-art-back-${orderId}` : null,
             };
 
             // Salvar no localStorage

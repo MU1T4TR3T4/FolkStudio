@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sidebar } from "@/components/ui/Sidebar";
 import { Header } from "@/components/ui/Header";
+import { Toaster } from "sonner";
 
 export default function DashboardLayout({
     children,
@@ -9,6 +10,7 @@ export default function DashboardLayout({
 }) {
     return (
         <div className="flex h-screen bg-gray-50">
+            <Toaster position="top-right" richColors />
             {/* Sidebar - Oculta em mobile (hidden), visível em desktop (md:block) */}
             <div className="hidden md:block h-full">
                 <Sidebar />

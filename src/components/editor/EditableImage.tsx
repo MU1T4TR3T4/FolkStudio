@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Rnd } from "react-rnd";
 import Image from "next/image";
 
@@ -20,25 +20,38 @@ interface EditableImageProps {
 }
 
 export default function EditableImage({ src, design, onUpdate, onDelete }: EditableImageProps) {
+    // Estado interno para garantir que o Rnd atualize quando design muda
+    const [internalDesign, setInternalDesign] = useState(design);
+
+    // Sincronizar com props quando design muda (ex: ao trocar de lado)
+    useEffect(() => {
+        setInternalDesign(design);
+    }, [design]);
 
     const handleRotate = (angle: number) => {
-        onUpdate({ ...design, rotation: design.rotation + angle });
+        const newDesign = { ...internalDesign, rotation: internalDesign.rotation + angle };
+        setInternalDesign(newDesign);
+        onUpdate(newDesign);
     };
 
     return (
         <Rnd
-            size={{ width: design.width, height: design.height }}
-            position={{ x: design.x, y: design.y }}
+            size={{ width: internalDesign.width, height: internalDesign.height }}
+            position={{ x: internalDesign.x, y: internalDesign.y }}
             onDragStop={(e, d) => {
-                onUpdate({ ...design, x: d.x, y: d.y });
+                const newDesign = { ...internalDesign, x: d.x, y: d.y };
+                setInternalDesign(newDesign);
+                onUpdate(newDesign);
             }}
             onResizeStop={(e, direction, ref, delta, position) => {
-                onUpdate({
-                    ...design,
+                const newDesign = {
+                    ...internalDesign,
                     width: parseInt(ref.style.width),
                     height: parseInt(ref.style.height),
                     ...position,
-                });
+                };
+                setInternalDesign(newDesign);
+                onUpdate(newDesign);
             }}
             bounds="parent"
             lockAspectRatio={true}
@@ -50,7 +63,7 @@ export default function EditableImage({ src, design, onUpdate, onDelete }: Edita
                 <div
                     className="w-full h-full"
                     style={{
-                        transform: `rotate(${design.rotation}deg)`,
+                        transform: `rotate(${internalDesign.rotation}deg)`,
                         transformOrigin: "center center",
                     }}
                 >

@@ -1,15 +1,25 @@
+
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Upload, Wand2, ShoppingCart, Loader2, Download, Save } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import EditableImage, { DesignProps } from "@/components/editor/EditableImage";
-import { Toaster, toast } from "sonner";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Upload, Wand2, Save, RotateCw, Trash2, Download, ShoppingCart, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { saveImage } from "@/lib/storage";
+import EditableImage from "@/components/editor/EditableImage";
 
 type TShirtModel = "short" | "long";
 type TShirtColor = "white" | "black" | "blue";
 type TShirtSide = "front" | "back";
+
+interface DesignProps {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+}
 
 const MOCKUPS = {
     short: {
@@ -372,12 +382,42 @@ export default function EditorPage() {
                 // Salvar posição do logo para frente e costas
                 designFront: imageFront ? designFront : null,
                 designBack: imageBack ? designBack : null,
+                logoFrontUrl: imageFront || null,
+                logoBackUrl: imageBack || null,
+            };
+
+            // Salvar imagens no IndexedDB
+            if (frontImage) await saveImage(`front-${newStamp.id}`, frontImage);
+            if (backImage) await saveImage(`back-${newStamp.id}`, backImage);
+            if (newStamp.logoFrontUrl) await saveImage(`logo-front-${newStamp.id}`, newStamp.logoFrontUrl);
+            if (newStamp.logoBackUrl) await saveImage(`logo-back-${newStamp.id}`, newStamp.logoBackUrl);
+
+            // Atualizar objeto para salvar apenas referências (ou manter URLs se forem pequenas, mas aqui vamos assumir que tudo vai pro IDB para segurança)
+            // Para manter compatibilidade com o resto do app que espera Base64, vamos manter o Base64 no objeto em memória,
+            // mas para o localStorage vamos criar uma versão "leve".
+            // PORÉM, como o resto do app (Meus Pedidos, etc) lê do localStorage, precisamos que eles também saibam ler do IDB.
+            // Estratégia Híbrida: Tentar salvar no LocalStorage, se falhar, salvar no IDB e marcar flag.
+            // Mas o erro JÁ É no localStorage.
+
+            // MUDANÇA DE ESTRATÉGIA: Vamos salvar TUDO no IDB e no localStorage salvar apenas metadados.
+            // Mas isso exige refatorar "Minhas Estampas" e "Pedidos".
+
+            // SOLUÇÃO PALIATIVA RÁPIDA E ROBUSTA:
+            // Salvar as imagens pesadas no IDB com chaves previsíveis.
+            // No localStorage, salvar o objeto SEM as strings base64 gigantes, mas com uma flag `storage: 'idb'`.
+
+            const stampToSave = {
+                ...newStamp,
+                frontImageUrl: `idb:front-${newStamp.id}`,
+                backImageUrl: backImage ? `idb:back-${newStamp.id}` : null,
+                logoFrontUrl: newStamp.logoFrontUrl ? `idb:logo-front-${newStamp.id}` : null,
+                logoBackUrl: newStamp.logoBackUrl ? `idb:logo-back-${newStamp.id}` : null,
             };
 
             // Salvar no localStorage
             const savedStamps = localStorage.getItem("folk_studio_stamps");
             const stamps = savedStamps ? JSON.parse(savedStamps) : [];
-            stamps.unshift(newStamp);
+            stamps.unshift(stampToSave);
             localStorage.setItem("folk_studio_stamps", JSON.stringify(stamps));
 
             toast.success("Modelo salvo com sucesso!");
@@ -438,7 +478,6 @@ export default function EditorPage() {
 
     return (
         <div className="flex flex-col h-[calc(100vh-8rem)] gap-6">
-            <Toaster position="top-right" richColors />
 
             {/* Canvas invisível para geração de imagem */}
             <canvas ref={canvasRef} className="hidden" />

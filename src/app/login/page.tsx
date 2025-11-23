@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -43,13 +44,18 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-white px-4">
             <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg border border-gray-100">
                 <div className="text-center">
+                    <Image
+                        src="/logo/folk-logo-sem-fundo1.png"
+                        alt="Folk Logo"
+                        width={120}
+                        height={120}
+                        className="mx-auto mb-6"
+                    />
                     <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Bem-vindo de volta</h2>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Entre na sua conta para continuar
-                    </p>
+                    <p className="mt-2 text-sm text-gray-600">Entre na sua conta para continuar</p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div className="rounded-md shadow-sm space-y-4">
@@ -61,7 +67,7 @@ export default function LoginPage() {
                                 type="email"
                                 autoComplete="email"
                                 required
-                                className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                                className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-[#A8F0F8] placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#A8F0F8] focus:border-[#A8F0F8] sm:text-sm"
                                 placeholder="Endereço de email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -75,26 +81,24 @@ export default function LoginPage() {
                                 type="password"
                                 autoComplete="current-password"
                                 required
-                                className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                                className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-[#A8F0F8] placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#A8F0F8] focus:border-[#A8F0F8] sm:text-sm"
                                 placeholder="Senha"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
                         </div>
                     </div>
-
                     <div>
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-[#7D4CDB] hover:bg-[#6b3bb5] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7D4CDB]"
                         >
                             {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "Entrar"}
                         </Button>
                     </div>
-
                     <div className="text-sm text-center">
-                        <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+                        <Link href="/register" className="font-medium text-[#7D4CDB] hover:text-[#6b3bb5]">
                             Não tem uma conta? Crie agora
                         </Link>
                     </div>

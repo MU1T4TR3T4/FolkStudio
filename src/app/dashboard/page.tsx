@@ -14,7 +14,7 @@ const recentDesigns = [
 export default function DashboardPage() {
     return (
         <div className="space-y-8">
-            {/* Cabeçalho da Página */}
+            {/* Page Header */}
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-gray-900">Coleções Recentes</h1>
@@ -23,22 +23,22 @@ export default function DashboardPage() {
                     </p>
                 </div>
                 <Link href="/dashboard/studio">
-                    <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                    <Button className="flex items-center gap-2 bg-[#7D4CDB] hover:bg-[#6b3bb5] text-white shadow-sm">
                         <Plus className="h-4 w-4" />
                         Criar Nova Arte
                     </Button>
                 </Link>
             </div>
 
-            {/* Grid de Cards */}
+            {/* Grid of Cards */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {recentDesigns.map((design) => (
                     <div
                         key={design.id}
-                        className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-blue-200"
+                        className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-[#7D4CDB]"
                     >
                         <div className="aspect-square w-full overflow-hidden bg-gray-100 relative">
-                            {/* Overlay no hover */}
+                            {/* Overlay on hover */}
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors z-10" />
                             <img
                                 src={design.image}
@@ -47,7 +47,7 @@ export default function DashboardPage() {
                             />
                         </div>
                         <div className="p-4">
-                            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-[#7D4CDB] transition-colors">
                                 {design.name}
                             </h3>
                             <p className="text-sm text-gray-500 mt-1">{design.type}</p>
