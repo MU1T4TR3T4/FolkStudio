@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Replicate from "replicate";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -27,46 +28,56 @@ export async function POST(req: Request) {
 
         console.log(`[generate-mockup] User prompt: "${prompt}"`);
 
-        const replicate = new Replicate({
-            auth: process.env.REPLICATE_API_TOKEN,
-        });
+        const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
+        // Usando Imagen 3 para gerar o design
+        const model = genAI.getGenerativeModel({ model: "imagen-3.0-generate-001" });
 
         // Construir prompt profissional baseado nas diretrizes de design
         const designPrompt = `T-shirt logo design: ${prompt}, vector style or vector-like appearance with clean defined lines, isolated design element, centered composition, white background, no text unless requested, high quality, detailed, suitable for printing, strong visual presence, modern and impactful, professional streetwear aesthetic, balanced composition, clear silhouettes, strong contrast, 8k`;
 
-        const negativePrompt = "blurry, low quality, distorted, deformed, background elements, watermark, multiple objects, cluttered, noisy, excessive details, text (unless requested), messy, unclear, pixelated";
-
         console.log(`[generate-mockup] User input: "${prompt}"`);
         console.log(`[generate-mockup] Final prompt: "${designPrompt}"`);
 
-        // Passo 1: Gerar design com SDXL
-        const designOutput = await replicate.run(
-            "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
-            {
-                input: {
-                    prompt: designPrompt,
-                    negative_prompt: negativePrompt,
-                    width: 1024,
-                    height: 1024,
-                    num_inference_steps: 40,
-                    guidance_scale: 8.5,
-                    scheduler: "K_EULER"
-                }
-            } as any
-        );
+        // Passo 1: Gerar design com Google Gen AI
+        console.log("[generate-mockup] Calling Google Gen AI for design...");
 
         let designUrl = "";
-        if (Array.isArray(designOutput)) {
-            designUrl = designOutput[0];
-        } else {
-            designUrl = String(designOutput);
+
+        try {
+            const result = await model.generateContent(designPrompt);
+            const response = await result.response;
+
+            const candidates = response.candidates;
+
+            if (candidates && candidates[0] && candidates[0].content && candidates[0].content.parts) {
+                for (const part of candidates[0].content.parts) {
+                    if (part.inlineData && part.inlineData.data) {
+                        // Google retorna base64
+                        designUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                        break;
+                    }
+                }
+            }
+
+            if (!designUrl) {
+                console.warn("[generate-mockup] No image data found in Google response");
+                console.log("Full response:", JSON.stringify(response));
+                throw new Error("Modelo Google não retornou dados de imagem válidos.");
+            }
+
+        } catch (genError: any) {
+            console.error("[generate-mockup] Google Gen AI Error:", genError);
+            throw genError;
         }
 
         console.log("[generate-mockup] Design generated, removing background...");
-        console.log("[generate-mockup] Design URL:", designUrl);
-        console.log("[generate-mockup] Design URL type:", typeof designUrl);
+        console.log("[generate-mockup] Design URL length:", designUrl.length);
 
         // Passo 2: Remover fundo com rembg
+        const replicate = new Replicate({
+            auth: process.env.REPLICATE_API_TOKEN,
+        });
+
         const transparentOutput = await replicate.run(
             "cjwbw/rembg:fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003",
             {
