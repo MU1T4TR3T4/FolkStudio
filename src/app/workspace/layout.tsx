@@ -121,7 +121,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                                     className={`
                                         flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
                                         ${isActive
-                                            ? 'bg-[#7D4CDB] bg-opacity-10 text-[#7D4CDB] font-medium'
+                                            ? 'bg-purple-100/30 text-purple-900 font-semibold'
                                             : 'text-gray-700 hover:bg-gray-100'
                                         }
                                     `}

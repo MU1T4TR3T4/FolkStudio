@@ -102,7 +102,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             `}>
                 <div className="h-full flex flex-col">
                     {/* Logo */}
-                    <div className="p-6 border-b border-gray-200">
+                    <div className="p-6 border-b border-gray-200 bg-purple-50/50">
                         <Image
                             src="/logo/folk-logo-sem-fundo1.png"
                             alt="FOLK Logo"
@@ -110,7 +110,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             height={48}
                             className="object-contain mb-2"
                         />
-                        <p className="text-sm text-gray-500 mt-1">Olá, {adminUser}</p>
+                        <p className="text-sm text-gray-700 mt-1">Olá, <span className="font-semibold text-purple-900">{adminUser}</span></p>
                     </div>
 
                     {/* Menu */}

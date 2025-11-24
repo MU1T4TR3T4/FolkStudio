@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Package, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Package, Clock, CheckCircle, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
 import OrderChat from "@/components/shared/OrderChat";
+import { getImage } from "@/lib/storage";
 
 interface Order {
     id: string;
@@ -18,26 +19,46 @@ interface Order {
     status: string;
     createdAt: string;
     backImageUrl?: string | null;
+    artImageUrl?: string | null;
+    backArtImageUrl?: string | null;
     adminStatus?: "novo" | "producao" | "pronto" | "entregue";
 }
 
-export default function ClientOrderDetailsPage({ params }: { params: { id: string } }) {
+export default function ClientOrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
+    const resolvedParams = use(params);
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
+    const [observations, setObservations] = useState("");
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         loadOrder();
-    }, [params.id]);
+    }, [resolvedParams.id]);
 
-    function loadOrder() {
+    async function loadOrder() {
         try {
             const savedOrders = localStorage.getItem("folk_studio_orders");
             if (savedOrders) {
                 const orders: Order[] = JSON.parse(savedOrders);
-                const found = orders.find(o => o.id === params.id);
+                const found = orders.find(o => o.id === resolvedParams.id);
                 if (found) {
-                    setOrder(found);
+                    const processedOrder = { ...found };
+
+                    if (processedOrder.imageUrl?.startsWith('idb:')) {
+                        const key = processedOrder.imageUrl.replace('idb:', '');
+                        const img = await getImage(key);
+                        if (img) processedOrder.imageUrl = img;
+                    }
+
+                    if (processedOrder.backImageUrl?.startsWith('idb:')) {
+                        const key = processedOrder.backImageUrl.replace('idb:', '');
+                        const img = await getImage(key);
+                        if (img) processedOrder.backImageUrl = img;
+                    }
+
+                    setOrder(processedOrder);
+                    setObservations(processedOrder.observations || "");
                 } else {
                     toast.error("Pedido não encontrado");
                     router.push("/dashboard/orders");
@@ -45,8 +66,33 @@ export default function ClientOrderDetailsPage({ params }: { params: { id: strin
             }
         } catch (error) {
             console.error("Erro ao carregar pedido:", error);
+            toast.error("Erro ao carregar pedido");
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handleSaveObservations() {
+        if (!order) return;
+
+        setSaving(true);
+        try {
+            const savedOrders = localStorage.getItem("folk_studio_orders");
+            if (savedOrders) {
+                const orders: Order[] = JSON.parse(savedOrders);
+                const index = orders.findIndex(o => o.id === order.id);
+                if (index !== -1) {
+                    orders[index] = { ...orders[index], observations: observations.trim() || null };
+                    localStorage.setItem("folk_studio_orders", JSON.stringify(orders));
+                    setOrder({ ...order, observations: observations.trim() || null });
+                    toast.success("Observações salvas com sucesso!");
+                }
+            }
+        } catch (error) {
+            console.error("Erro ao salvar observações:", error);
+            toast.error("Erro ao salvar observações");
+        } finally {
+            setSaving(false);
         }
     }
 
@@ -83,13 +129,8 @@ export default function ClientOrderDetailsPage({ params }: { params: { id: strin
         <div className="space-y-6">
             <Toaster position="top-right" richColors />
 
-            {/* Header */}
             <div className="flex items-center gap-4">
-                <Button
-                    variant="ghost"
-                    onClick={() => router.push("/dashboard/orders")}
-                    className="gap-2"
-                >
+                <Button variant="ghost" onClick={() => router.push("/dashboard/orders")} className="gap-2">
                     <ArrowLeft className="h-4 w-4" />
                     Voltar
                 </Button>
@@ -100,9 +141,7 @@ export default function ClientOrderDetailsPage({ params }: { params: { id: strin
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Coluna Esquerda - Info */}
                 <div className="lg:col-span-2 space-y-6">
-                    {/* Status Card */}
                     <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-center justify-between">
                         <div>
                             <p className="text-sm text-gray-500 mb-1">Status Atual</p>
@@ -115,19 +154,22 @@ export default function ClientOrderDetailsPage({ params }: { params: { id: strin
                         {getStatusBadge()}
                     </div>
 
-                    {/* Detalhes do Produto */}
                     <div className="bg-white rounded-xl border border-gray-200 p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo do Pedido</h3>
                         <div className="flex flex-col md:flex-row gap-6">
                             <div className="flex gap-4">
-                                <div className="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
-                                    <p className="text-xs text-center text-gray-500 mt-1">Frente</p>
-                                    <img src={order.imageUrl} alt="Arte Frente" className="w-full h-full object-contain" />
+                                <div className="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200 flex flex-col">
+                                    <p className="text-xs text-center text-gray-500 py-1 bg-gray-50 border-b">Frente</p>
+                                    <div className="flex-1 flex items-center justify-center p-2">
+                                        <img src={order.imageUrl} alt="Arte Frente" className="max-w-full max-h-full object-contain" />
+                                    </div>
                                 </div>
                                 {order.backImageUrl && (
-                                    <div className="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
-                                        <p className="text-xs text-center text-gray-500 mt-1">Costas</p>
-                                        <img src={order.backImageUrl} alt="Arte Costas" className="w-full h-full object-contain" />
+                                    <div className="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200 flex flex-col">
+                                        <p className="text-xs text-center text-gray-500 py-1 bg-gray-50 border-b">Costas</p>
+                                        <div className="flex-1 flex items-center justify-center p-2">
+                                            <img src={order.backImageUrl} alt="Arte Costas" className="max-w-full max-h-full object-contain" />
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -165,9 +207,33 @@ export default function ClientOrderDetailsPage({ params }: { params: { id: strin
                             </div>
                         </div>
                     </div>
+
+                    <div className="bg-white rounded-xl border border-gray-200 p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Observações do Pedido</h3>
+                        <textarea
+                            value={observations}
+                            onChange={(e) => setObservations(e.target.value)}
+                            placeholder="Adicione observações sobre o pedido..."
+                            className="w-full h-32 px-4 py-3 text-sm border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            maxLength={500}
+                        />
+                        <div className="flex items-center justify-between mt-3">
+                            <p className="text-xs text-gray-500">
+                                {observations.length}/500 caracteres
+                            </p>
+                            <Button
+                                onClick={handleSaveObservations}
+                                disabled={saving || observations === (order.observations || "")}
+                                className="gap-2 bg-blue-600 hover:bg-blue-700"
+                                size="sm"
+                            >
+                                <Save className="h-4 w-4" />
+                                {saving ? "Salvando..." : "Salvar Observações"}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Coluna Direita - Chat */}
                 <div className="lg:col-span-1">
                     <div className="bg-white rounded-xl border border-gray-200 p-6 h-full">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Fale Conosco</h3>
