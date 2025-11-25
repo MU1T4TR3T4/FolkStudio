@@ -52,9 +52,7 @@ export default function ChatPage() {
 
         setSending(true);
         try {
-            // Simular delay
-            await new Promise(resolve => setTimeout(resolve, 300));
-
+            // Adicionar mensagem do cliente
             const newMsg: Message = {
                 id: crypto.randomUUID(),
                 content: newMessage,
@@ -67,18 +65,34 @@ export default function ChatPage() {
             localStorage.setItem("folk_studio_chat", JSON.stringify(updatedMessages));
             setNewMessage("");
 
-            // Simular resposta automática do admin após 2 segundos
-            setTimeout(() => {
-                const autoReply: Message = {
+            // Chamar API do ChatGPT
+            const response = await fetch("/api/chat/gpt", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    message: newMsg.content,
+                    conversationHistory: messages.slice(-10), // Últimas 10 mensagens para contexto
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.status === "success" && data.reply) {
+                // Adicionar resposta do ChatGPT
+                const gptReply: Message = {
                     id: crypto.randomUUID(),
-                    content: "Obrigado pelo contato! Nossa equipe responderá em breve.",
+                    content: data.reply,
                     isAdmin: true,
                     createdAt: new Date().toISOString(),
                 };
-                const withReply = [...updatedMessages, autoReply];
+                const withReply = [...updatedMessages, gptReply];
                 setMessages(withReply);
                 localStorage.setItem("folk_studio_chat", JSON.stringify(withReply));
-            }, 2000);
+            } else {
+                toast.error("Erro ao obter resposta do assistente");
+            }
 
         } catch (error) {
             console.error(error);

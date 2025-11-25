@@ -62,7 +62,7 @@ export default function OrderChat({ orderId, currentUserType, userName }: OrderC
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
 
-    const handleSendMessage = (e: React.FormEvent) => {
+    const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!newMessage.trim()) return;
@@ -84,6 +84,55 @@ export default function OrderChat({ orderId, currentUserType, userName }: OrderC
 
             setNewMessage("");
             loadMessages(); // Recarrega imediatamente
+
+            // Se for mensagem do cliente, chamar ChatGPT para resposta automática
+            if (currentUserType === "client") {
+                try {
+                    // Preparar contexto do pedido
+                    const orderContext = `Pedido ID: ${orderId}`;
+
+                    // Obter histórico de mensagens deste pedido
+                    const orderMessages = allMessages.filter(m => m.orderId === orderId);
+
+                    const response = await fetch("/api/chat/gpt", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            message: message.text,
+                            conversationHistory: orderMessages.slice(-10).map(m => ({
+                                content: m.text,
+                                isAdmin: m.authorType === "admin"
+                            })),
+                            orderContext: orderContext,
+                        }),
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === "success" && data.reply) {
+                        // Adicionar resposta do ChatGPT
+                        const gptReply: ChatMessage = {
+                            id: crypto.randomUUID(),
+                            orderId,
+                            text: data.reply,
+                            authorType: "admin",
+                            authorName: "Assistente Virtual",
+                            timestamp: new Date().toISOString()
+                        };
+
+                        const updatedMessages = localStorage.getItem("folk_order_chat_messages");
+                        const currentMessages: ChatMessage[] = updatedMessages ? JSON.parse(updatedMessages) : [];
+                        currentMessages.push(gptReply);
+                        localStorage.setItem("folk_order_chat_messages", JSON.stringify(currentMessages));
+                        loadMessages();
+                    }
+                } catch (error) {
+                    console.error("Erro ao obter resposta do ChatGPT:", error);
+                    // Não mostrar erro para o usuário, apenas log
+                }
+            }
         } catch (error) {
             toast.error("Erro ao enviar mensagem");
         }
@@ -125,8 +174,8 @@ export default function OrderChat({ orderId, currentUserType, userName }: OrderC
                                 </div>
                                 <div
                                     className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm ${isMe
-                                            ? "bg-blue-600 text-white rounded-tr-none"
-                                            : "bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm"
+                                        ? "bg-blue-600 text-white rounded-tr-none"
+                                        : "bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm"
                                         }`}
                                 >
                                     <p className="whitespace-pre-wrap">{msg.text}</p>
