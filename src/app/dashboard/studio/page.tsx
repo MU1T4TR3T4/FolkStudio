@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Upload, Save, Download, Type, Image as ImageIcon, Trash2, Undo, Redo, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Copy, Eraser } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,8 @@ const FONTS = [
     "Pacifico",
 ];
 
-export default function CanvaEditorPage() {
+// Internal component that uses useSearchParams
+function StudioContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -759,20 +760,7 @@ export default function CanvaEditorPage() {
                                         : "bg-gray-50 text-gray-700 hover:bg-gray-100"
                                         }`}
                                 >
-                                    {el.type === "text" ? (
-                                        `📝 ${el.content?.substring(0, 20)}`
-                                    ) : (
-                                        <div className="flex items-center gap-2">
-                                            {el.src && (
-                                                <img
-                                                    src={el.src}
-                                                    alt="Thumbnail"
-                                                    className="w-8 h-8 object-cover rounded border border-gray-300"
-                                                />
-                                            )}
-                                            <span>🖼️ Imagem</span>
-                                        </div>
-                                    )}
+                                    {el.type === "text" ? `📝 ${el.content?.substring(0, 20)}` : "🖼️ Imagem"}
                                 </div>
                             ))}
                         </div>
@@ -787,7 +775,7 @@ export default function CanvaEditorPage() {
                                     <div
                                         key={index}
                                         onClick={() => handleAddImageFromGallery(img)}
-                                        className="relative group cursor-pointer rounded-lg overflow-hidden border-2 border-gray-200 hover:border-[#7D4CDB] transition-all"
+                                        className="relative group cursor-pointer rounded-lg overflow-hidden border-2 border-gray-200 hover:border-[#7D4CDB] transition-all bg-white"
                                         title="Clique para adicionar ao canvas"
                                     >
                                         <img
@@ -897,3 +885,18 @@ export default function CanvaEditorPage() {
     );
 }
 
+// Main exported component with Suspense boundary
+export default function CanvaEditorPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center h-screen bg-gray-50">
+                <div className="text-center">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#7D4CDB] mb-4"></div>
+                    <p className="text-lg text-gray-600">Carregando estúdio...</p>
+                </div>
+            </div>
+        }>
+            <StudioContent />
+        </Suspense>
+    );
+}
