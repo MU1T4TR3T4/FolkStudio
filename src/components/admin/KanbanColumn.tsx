@@ -11,28 +11,34 @@ interface KanbanColumnProps {
 
 export default function KanbanColumn({ title, count, icon: Icon, color, children }: KanbanColumnProps) {
     const colorClasses = {
-        blue: "bg-blue-50 border-blue-200 text-blue-700",
-        yellow: "bg-yellow-50 border-yellow-200 text-yellow-700",
-        green: "bg-green-50 border-green-200 text-green-700",
-        gray: "bg-gray-50 border-gray-200 text-gray-700",
+        blue: "border-t-[3px] border-[#0073ea]",
+        yellow: "border-t-[3px] border-[#fdab3d]",
+        green: "border-t-[3px] border-[#00c875]",
+        gray: "border-t-[3px] border-[#676879]",
+    };
+
+    const headerTextColors = {
+        blue: "text-[#0073ea]",
+        yellow: "text-[#fdab3d]",
+        green: "text-[#00c875]",
+        gray: "text-[#676879]",
     };
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full min-w-[280px]">
             {/* Header */}
-            <div className={`${colorClasses[color]} border-2 rounded-t-xl p-4 flex items-center justify-between`}>
+            <div className={`bg-white rounded-t-lg p-3 flex items-center justify-between shadow-sm mb-2 ${colorClasses[color]}`}>
                 <div className="flex items-center gap-2">
-                    <Icon className="h-5 w-5" />
-                    <h3 className="font-semibold">{title}</h3>
+                    <h3 className={`font-medium text-sm ${headerTextColors[color]}`}>{title}</h3>
                 </div>
-                <span className="bg-white px-2 py-1 rounded-full text-sm font-bold">
+                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs font-medium">
                     {count}
                 </span>
             </div>
 
             {/* Content */}
-            <div className="flex-1 bg-gray-50 border-2 border-t-0 border-gray-200 rounded-b-xl p-4 overflow-y-auto min-h-[400px]">
-                <div className="space-y-3">
+            <div className="flex-1 overflow-y-auto p-1">
+                <div className="space-y-2">
                     {children}
                 </div>
             </div>

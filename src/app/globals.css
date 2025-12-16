@@ -2,13 +2,20 @@
 
 /* Brand color variables */
 :root {
-  --color-primary: #7D4CDB;
-  /* Purple */
-  --color-accent: #A8F0F8;
-  /* Cyan */
-  --color-background: #ffffff;
-  --color-foreground: #171717;
-  --color-gray-secondary: #707070;
+  --color-primary: #0073ea;
+  /* Monday Blue */
+  --color-accent: #00c875;
+  /* Monday Green (Success) */
+  --color-background: #f5f6f8;
+  /* Light Gray Background */
+  --color-surface: #ffffff;
+  /* White Surface */
+  --color-foreground: #323338;
+  /* Dark Gray Text */
+  --color-gray-secondary: #676879;
+  /* Secondary Text */
+  --color-border: #d0d4e4;
+  /* Border Color */
 }
 
 /* Dark mode overrides */

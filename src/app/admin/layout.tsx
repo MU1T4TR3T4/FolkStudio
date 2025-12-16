@@ -80,7 +80,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-[#f5f6f8]">
             <Toaster position="top-right" richColors />
 
             {/* Mobile Header */}
@@ -102,7 +102,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             `}>
                 <div className="h-full flex flex-col">
                     {/* Logo */}
-                    <div className="p-6 border-b border-gray-200 bg-purple-50/50">
+                    <div className="p-6 border-b border-[#d0d4e4] bg-white">
                         <Image
                             src="/logo/folk-logo-sem-fundo1.png"
                             alt="FOLK Logo"
@@ -125,10 +125,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     href={item.href}
                                     onClick={() => setSidebarOpen(false)}
                                     className={`
-                                        flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
+                                        flex items-center gap-3 px-4 py-2.5 mx-2 rounded-md transition-all text-sm
                                         ${isActive
-                                            ? 'bg-blue-50 text-blue-600 font-medium'
-                                            : 'text-gray-700 hover:bg-gray-100'
+                                            ? 'bg-[#e5f4ff] text-[#0073ea] font-medium border-l-4 border-[#0073ea]'
+                                            : 'text-[#323338] hover:bg-[#f5f6f8] border-l-4 border-transparent'
                                         }
                                     `}
                                 >

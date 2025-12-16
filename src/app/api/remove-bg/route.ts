@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import Replicate from "replicate";
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -8,9 +7,9 @@ export async function POST(req: Request) {
     try {
         console.log("[remove-bg] Request received");
 
-        if (!process.env.REPLICATE_API_TOKEN) {
+        if (!process.env.REMOVEBG_API_KEY) {
             return NextResponse.json(
-                { status: "error", message: "REPLICATE_API_TOKEN não configurado" },
+                { status: "error", message: "REMOVEBG_API_KEY não configurado" },
                 { status: 500 }
             );
         }
@@ -25,46 +24,36 @@ export async function POST(req: Request) {
             );
         }
 
-        const replicate = new Replicate({
-            auth: process.env.REPLICATE_API_TOKEN,
+        console.log("[remove-bg] Removing background with Remove.bg...");
+
+        // Convert base64 to buffer
+        const base64Data = image.includes(',') ? image.split(',')[1] : image;
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+
+        // Create FormData
+        const formData = new FormData();
+        formData.append('image_file', new Blob([imageBuffer]), 'image.png');
+        formData.append('size', 'auto');
+
+        // Call Remove.bg API
+        const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+            method: 'POST',
+            headers: {
+                'X-Api-Key': process.env.REMOVEBG_API_KEY,
+            },
+            body: formData
         });
 
-        console.log("[remove-bg] Removing background...");
-
-        // Remover fundo com rembg
-        const output = await replicate.run(
-            "cjwbw/rembg:fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003",
-            {
-                input: {
-                    image: image
-                }
-            } as any
-        );
-
-        let transparentUrl = "";
-        if (Array.isArray(output)) {
-            transparentUrl = output[0];
-        } else {
-            transparentUrl = String(output);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("[remove-bg] Remove.bg API error:", response.status, errorText);
+            throw new Error(`Remove.bg API error: ${response.status} - ${errorText}`);
         }
 
-        console.log("[remove-bg] Background removed, downloading result...");
+        console.log("[remove-bg] Background removed, converting to base64...");
 
-        // Baixar e converter para Base64
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 25000);
-
-        const imageResponse = await fetch(transparentUrl, {
-            signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!imageResponse.ok) {
-            throw new Error(`HTTP ${imageResponse.status}`);
-        }
-
-        const arrayBuffer = await imageResponse.arrayBuffer();
+        // Convert response to base64
+        const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         const base64Image = `data:image/png;base64,${buffer.toString('base64')}`;
 

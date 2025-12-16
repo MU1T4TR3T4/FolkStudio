@@ -9,11 +9,11 @@ export function Button({ children, variant = 'primary', size = 'default', classN
     const baseStyles = "rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
 
     const variants = {
-        primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
-        secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500",
-        outline: "border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-blue-500",
-        ghost: "bg-transparent hover:bg-gray-100 text-gray-700 focus:ring-gray-500",
-        destructive: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500"
+        primary: "bg-[#0073ea] text-white hover:bg-[#0060b9] focus:ring-[#0073ea]/50 shadow-sm",
+        secondary: "bg-white border border-[#d0d4e4] text-[#323338] hover:bg-[#f5f6f8] focus:ring-[#0073ea]/50",
+        outline: "border border-[#d0d4e4] text-[#323338] hover:bg-[#f5f6f8] focus:ring-[#0073ea]/50",
+        ghost: "bg-transparent hover:bg-[#f5f6f8] text-[#323338] focus:ring-[#676879]/50",
+        destructive: "bg-[#e2445c] text-white hover:bg-[#c42e45] focus:ring-[#e2445c]/50"
     };
 
     const sizes = {
