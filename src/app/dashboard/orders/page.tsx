@@ -6,6 +6,7 @@ import { Plus, Upload, ShoppingBag, Package, CheckCircle, Clock, Trash2, Eye } f
 import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
 import { saveImage, getImage } from "@/lib/storage";
+import { getAllOrders, createOrder, deleteOrder as deleteOrderFromDB } from "@/lib/orders";
 
 interface Order {
     id: string;
@@ -52,30 +53,49 @@ export default function OrdersPage() {
 
     async function loadOrders() {
         try {
-            const savedOrders = localStorage.getItem("folk_studio_orders");
-            if (savedOrders) {
-                const parsedOrders: Order[] = JSON.parse(savedOrders);
+            // Try loading from Supabase first
+            const supabaseOrders = await getAllOrders();
 
-                // Carregar imagens do IDB se necessário
-                const processedOrders = await Promise.all(parsedOrders.map(async (order) => {
-                    const newOrder = { ...order };
-                    if (newOrder.imageUrl?.startsWith('idb:')) {
-                        const key = newOrder.imageUrl.replace('idb:', '');
-                        const img = await getImage(key);
-                        if (img) newOrder.imageUrl = img;
-                    }
-                    if (newOrder.backImageUrl?.startsWith('idb:')) {
-                        const key = newOrder.backImageUrl.replace('idb:', '');
-                        const img = await getImage(key);
-                        if (img) newOrder.backImageUrl = img;
-                    }
-                    // Não precisamos carregar as artes originais aqui para a lista, apenas para detalhes se necessário,
-                    // mas para manter consistência, poderíamos. Por performance, vamos carregar só o necessário para renderizar a lista.
-                    // A lista usa imageUrl.
-                    return newOrder;
+            if (supabaseOrders && supabaseOrders.length > 0) {
+                // Convert Supabase format to local format if needed
+                const convertedOrders: Order[] = supabaseOrders.map(order => ({
+                    id: order.id,
+                    imageUrl: order.imageUrl || '',
+                    color: order.color,
+                    material: order.product_type || 'algodao',
+                    sizes: order.size ? { [order.size]: order.quantity } : {},
+                    totalQty: order.quantity,
+                    observations: order.notes || null,
+                    status: order.status === 'pending' ? 'Pendente' :
+                        order.status === 'in_production' ? 'Em Produção' : 'Concluído',
+                    createdAt: order.created_at,
+                    backImageUrl: order.backImageUrl,
                 }));
+                setOrders(convertedOrders);
+            } else {
+                // Fallback to localStorage
+                const savedOrders = localStorage.getItem("folk_studio_orders");
+                if (savedOrders) {
+                    const parsedOrders: Order[] = JSON.parse(savedOrders);
 
-                setOrders(processedOrders);
+                    // Carregar imagens do IDB se necessário
+                    const processedOrders = await Promise.all(parsedOrders.map(async (order) => {
+                        const newOrder = { ...order };
+                        if (newOrder.imageUrl?.startsWith('idb:')) {
+                            const key = newOrder.imageUrl.replace('idb:', '');
+                            const img = await getImage(key);
+                            if (img) newOrder.imageUrl = img;
+                        }
+                        if (newOrder.backImageUrl?.startsWith('idb:')) {
+                            const key = newOrder.backImageUrl.replace('idb:', '');
+                            const img = await getImage(key);
+                            if (img) newOrder.backImageUrl = img;
+                        }
+                        return newOrder;
+                    }));
+
+                    setOrders(processedOrders);
+                }
             }
         } catch (error) {
             console.error("Erro ao carregar pedidos:", error);
@@ -84,11 +104,22 @@ export default function OrdersPage() {
         }
     }
 
-    function deleteOrder(id: string) {
-        const updatedOrders = orders.filter(order => order.id !== id);
-        setOrders(updatedOrders);
-        localStorage.setItem("folk_studio_orders", JSON.stringify(updatedOrders));
-        toast.success("Pedido removido");
+    async function deleteOrder(id: string) {
+        try {
+            // Try deleting from Supabase
+            await deleteOrderFromDB(id);
+
+            // Update local state
+            const updatedOrders = orders.filter(order => order.id !== id);
+            setOrders(updatedOrders);
+
+            // Also update localStorage as fallback
+            localStorage.setItem("folk_studio_orders", JSON.stringify(updatedOrders));
+            toast.success("Pedido removido");
+        } catch (error) {
+            console.error("Erro ao deletar pedido:", error);
+            toast.error("Erro ao remover pedido");
+        }
     }
 
     const getStatusBadge = (status: string) => {

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
 import { useRouter } from "next/navigation";
 import { getImage } from "@/lib/storage";
+import { supabase } from "@/lib/supabase";
 
 interface Stamp {
     id: string;
@@ -36,31 +37,61 @@ export default function EstampasPage() {
 
     async function loadAllData() {
         try {
-            const savedStamps = localStorage.getItem("folk_studio_stamps");
-            if (savedStamps) {
-                const parsedStamps: Stamp[] = JSON.parse(savedStamps);
-                const processedStamps = await Promise.all(
-                    parsedStamps.map(async (stamp) => {
-                        const newStamp = { ...stamp };
-                        if (newStamp.frontImageUrl?.startsWith("idb:")) {
-                            const key = newStamp.frontImageUrl.replace("idb:", "");
-                            const image = await getImage(key);
-                            if (image) newStamp.frontImageUrl = image;
-                        }
-                        if (newStamp.backImageUrl?.startsWith("idb:")) {
-                            const key = newStamp.backImageUrl.replace("idb:", "");
-                            const image = await getImage(key);
-                            if (image) newStamp.backImageUrl = image;
-                        }
-                        return newStamp;
-                    })
-                );
-                setStamps(processedStamps);
+            // Try loading from Supabase first
+            const { data: stampsData, error: stampsError } = await supabase
+                .from('stamps')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (!stampsError && stampsData) {
+                // Convert Supabase stamps to local format
+                const convertedStamps: Stamp[] = stampsData.map(stamp => ({
+                    id: stamp.id,
+                    name: stamp.name,
+                    frontImageUrl: stamp.image_url,
+                    backImageUrl: null,
+                    createdAt: stamp.created_at,
+                }));
+                setStamps(convertedStamps);
+
+                // Separate by type
+                const generated = stampsData
+                    .filter(s => s.type === 'generated')
+                    .map(s => s.image_url);
+                const uploaded = stampsData
+                    .filter(s => s.type === 'uploaded')
+                    .map(s => s.image_url);
+
+                setGeneratedDesigns(generated);
+                setUploads(uploaded);
+            } else {
+                // Fallback to localStorage
+                const savedStamps = localStorage.getItem("folk_studio_stamps");
+                if (savedStamps) {
+                    const parsedStamps: Stamp[] = JSON.parse(savedStamps);
+                    const processedStamps = await Promise.all(
+                        parsedStamps.map(async (stamp) => {
+                            const newStamp = { ...stamp };
+                            if (newStamp.frontImageUrl?.startsWith("idb:")) {
+                                const key = newStamp.frontImageUrl.replace("idb:", "");
+                                const image = await getImage(key);
+                                if (image) newStamp.frontImageUrl = image;
+                            }
+                            if (newStamp.backImageUrl?.startsWith("idb:")) {
+                                const key = newStamp.backImageUrl.replace("idb:", "");
+                                const image = await getImage(key);
+                                if (image) newStamp.backImageUrl = image;
+                            }
+                            return newStamp;
+                        })
+                    );
+                    setStamps(processedStamps);
+                }
+                const savedGenerated = localStorage.getItem("folk_studio_generated_designs");
+                if (savedGenerated) setGeneratedDesigns(JSON.parse(savedGenerated));
+                const savedUploads = localStorage.getItem("folk_studio_uploads");
+                if (savedUploads) setUploads(JSON.parse(savedUploads));
             }
-            const savedGenerated = localStorage.getItem("folk_studio_generated_designs");
-            if (savedGenerated) setGeneratedDesigns(JSON.parse(savedGenerated));
-            const savedUploads = localStorage.getItem("folk_studio_uploads");
-            if (savedUploads) setUploads(JSON.parse(savedUploads));
         } catch (error) {
             console.error(error);
             toast.error("Erro ao carregar dados");
@@ -69,11 +100,29 @@ export default function EstampasPage() {
         }
     }
 
-    function handleDeleteModel(id: string) {
-        const updated = stamps.filter((s) => s.id !== id);
-        setStamps(updated);
-        localStorage.setItem("folk_studio_stamps", JSON.stringify(updated));
-        toast.success("Modelo deletado!");
+    async function handleDeleteModel(id: string) {
+        try {
+            // Try deleting from Supabase
+            const { error } = await supabase
+                .from('stamps')
+                .delete()
+                .eq('id', id);
+
+            if (!error) {
+                const updated = stamps.filter((s) => s.id !== id);
+                setStamps(updated);
+                toast.success("Modelo deletado!");
+            } else {
+                // Fallback to localStorage
+                const updated = stamps.filter((s) => s.id !== id);
+                setStamps(updated);
+                localStorage.setItem("folk_studio_stamps", JSON.stringify(updated));
+                toast.success("Modelo deletado (local)!");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao deletar modelo");
+        }
     }
 
     function handleDeleteDesign(index: number, type: "ai" | "upload") {

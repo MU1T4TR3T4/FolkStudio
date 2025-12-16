@@ -6,6 +6,7 @@ import { Upload, Save, Download, Type, Image as ImageIcon, Trash2, Undo, Redo, B
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Rnd } from "react-rnd";
+import { supabase } from "@/lib/supabase";
 
 interface Element {
     id: string;
@@ -472,24 +473,94 @@ function StudioContent() {
 
     // Save
     const handleSave = async () => {
-        const finalImage = await generateFinalImage();
-        if (finalImage) {
-            const design = {
-                id: crypto.randomUUID(),
-                mockupImage,
-                productType,
-                color,
-                elements,
-                finalImage,
-                createdAt: new Date().toISOString(),
-            };
+        try {
+            const finalImage = await generateFinalImage();
+            if (!finalImage) {
+                toast.error("Erro ao gerar imagem final");
+                return;
+            }
 
-            const saved = localStorage.getItem("folk_studio_designs");
-            const designs = saved ? JSON.parse(saved) : [];
-            designs.unshift(design);
-            localStorage.setItem("folk_studio_designs", JSON.stringify(designs));
+            toast.info("Salvando design...");
 
-            toast.success("Design salvo com sucesso!");
+            // Convert base64 to blob
+            const base64Response = await fetch(finalImage);
+            const blob = await base64Response.blob();
+
+            // Generate unique filename
+            const fileName = `design-${Date.now()}-${crypto.randomUUID()}.png`;
+
+            // Upload image to Supabase Storage
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('designs')
+                .upload(fileName, blob, {
+                    contentType: 'image/png',
+                    cacheControl: '3600',
+                });
+
+            if (uploadError) {
+                console.error('Upload error:', uploadError);
+                // Fallback to localStorage if upload fails
+                const design = {
+                    id: crypto.randomUUID(),
+                    mockupImage,
+                    productType,
+                    color,
+                    elements,
+                    finalImage,
+                    createdAt: new Date().toISOString(),
+                };
+                const saved = localStorage.getItem("folk_studio_designs");
+                const designs = saved ? JSON.parse(saved) : [];
+                designs.unshift(design);
+                localStorage.setItem("folk_studio_designs", JSON.stringify(designs));
+                toast.success("Design salvo localmente (offline)");
+                return;
+            }
+
+            // Get public URL for the uploaded image
+            const { data: { publicUrl } } = supabase.storage
+                .from('designs')
+                .getPublicUrl(fileName);
+
+            // Save design metadata to database
+            const { data: designData, error: dbError } = await supabase
+                .from('designs')
+                .insert({
+                    mockup_image: mockupImage,
+                    product_type: productType,
+                    color: color,
+                    elements: elements,
+                    final_image_url: publicUrl,
+                })
+                .select()
+                .single();
+
+            if (dbError) {
+                console.error('Database error:', dbError);
+                // Fallback to localStorage
+                const design = {
+                    id: crypto.randomUUID(),
+                    mockupImage,
+                    productType,
+                    color,
+                    elements,
+                    finalImage,
+                    createdAt: new Date().toISOString(),
+                };
+                const saved = localStorage.getItem("folk_studio_designs");
+                const designs = saved ? JSON.parse(saved) : [];
+                designs.unshift(design);
+                localStorage.setItem("folk_studio_designs", JSON.stringify(designs));
+                toast.success("Design salvo localmente (offline)");
+                return;
+            }
+
+            toast.success("Design salvo com sucesso no banco de dados!");
+            console.log('Design saved:', designData);
+
+        } catch (error) {
+            console.error('Error saving design:', error);
+            toast.error("Erro ao salvar design. Tente novamente.");
         }
     };
 
