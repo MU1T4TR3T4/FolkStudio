@@ -3,12 +3,5 @@
         "api/**/*.ts": {
             "maxDuration": 60
         }
-    },
-    "outputFileTracing": {
-        "excludeFiles": [
-            "node_modules/canvas/**",
-            "node_modules/@prisma/**",
-            "node_modules/prisma/**"
-        ]
     }
 }
