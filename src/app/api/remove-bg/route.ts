@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Vercel Function Configuration
+export const maxDuration = 60; // 60 seconds for background removal processing
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
     try {
         const { image } = await request.json();
