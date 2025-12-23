@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -213,13 +214,16 @@ export default function DashboardPage() {
                                 }`}
                         >
                             <div className="aspect-square w-full overflow-hidden bg-gray-50 relative">
-                                <img
+                                <Image
                                     src={type.preview}
                                     alt={type.name}
-                                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    fill
+                                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                                    className="object-cover transition-transform duration-300 group-hover:scale-105"
                                     style={{
                                         objectPosition: type.previewPosition === "left" ? "25% center" : "center"
                                     }}
+                                    priority={true}
                                 />
                                 {selectedType === type.id && (
                                     <div className="absolute inset-0 bg-[#7D4CDB]/10" />
@@ -252,10 +256,14 @@ export default function DashboardPage() {
                             >
                                 <div className="aspect-video w-full overflow-hidden bg-gray-50 relative">
                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors z-10" />
-                                    <img
+                                    <Image
                                         src={mockup.image}
                                         alt={mockup.name}
-                                        className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                                        fill
+                                        sizes="(max-width: 640px) 100vw, 50vw"
+                                        className="object-contain transition-transform duration-300 group-hover:scale-105"
+                                        loading="lazy"
+                                        quality={85}
                                     />
                                 </div>
                                 <div className="p-3">
