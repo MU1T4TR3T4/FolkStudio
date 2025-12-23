@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Rnd } from "react-rnd";
 import { supabase } from "@/lib/supabase";
+import "@/app/fonts.css";
 
 interface Element {
     id: string;
@@ -34,20 +35,18 @@ interface Element {
     src?: string;
 }
 
-// Popular fonts
+// Custom fonts from /public/Fontes/
 const FONTS = [
-    "Inter",
-    "Roboto",
-    "Open Sans",
-    "Montserrat",
-    "Poppins",
-    "Playfair Display",
-    "Merriweather",
-    "Lora",
     "Bebas Neue",
-    "Oswald",
-    "Raleway",
-    "Pacifico",
+    "Montserrat Thin",
+    "Montserrat ExtraLight",
+    "Montserrat Light",
+    "Montserrat",
+    "Montserrat Medium",
+    "Montserrat SemiBold",
+    "Montserrat Bold",
+    "Montserrat ExtraBold",
+    "Montserrat Black",
 ];
 
 // Internal component that uses useSearchParams
