@@ -12,10 +12,35 @@ export interface Design {
     mockup_image: string | null;
     product_type: string;
     color: string;
-    elements: any;
+    elements: DesignElement[];
     final_image_url: string | null;
     created_at: string;
     updated_at: string;
+}
+
+export interface DesignElement {
+    id: string;
+    type: "text" | "image";
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+    xPercent?: number;
+    yPercent?: number;
+    widthPercent?: number;
+    heightPercent?: number;
+    // Text properties
+    content?: string;
+    fontFamily?: string;
+    fontSize?: number;
+    fontWeight?: string;
+    fontStyle?: string;
+    textDecoration?: string;
+    color?: string;
+    textAlign?: string;
+    // Image properties
+    src?: string;
 }
 
 export interface Order {

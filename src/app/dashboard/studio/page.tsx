@@ -498,21 +498,7 @@ function StudioContent() {
 
             if (uploadError) {
                 console.error('Upload error:', uploadError);
-                // Fallback to localStorage if upload fails
-                const design = {
-                    id: crypto.randomUUID(),
-                    mockupImage,
-                    productType,
-                    color,
-                    elements,
-                    finalImage,
-                    createdAt: new Date().toISOString(),
-                };
-                const saved = localStorage.getItem("folk_studio_designs");
-                const designs = saved ? JSON.parse(saved) : [];
-                designs.unshift(design);
-                localStorage.setItem("folk_studio_designs", JSON.stringify(designs));
-                toast.success("Design salvo localmente (offline)");
+                toast.error("Erro ao fazer upload da imagem. Verifique sua conexão.");
                 return;
             }
 
@@ -536,30 +522,16 @@ function StudioContent() {
 
             if (dbError) {
                 console.error('Database error:', dbError);
-                // Fallback to localStorage
-                const design = {
-                    id: crypto.randomUUID(),
-                    mockupImage,
-                    productType,
-                    color,
-                    elements,
-                    finalImage,
-                    createdAt: new Date().toISOString(),
-                };
-                const saved = localStorage.getItem("folk_studio_designs");
-                const designs = saved ? JSON.parse(saved) : [];
-                designs.unshift(design);
-                localStorage.setItem("folk_studio_designs", JSON.stringify(designs));
-                toast.success("Design salvo localmente (offline)");
+                toast.error("Erro ao salvar no banco de dados. Tente novamente.");
                 return;
             }
 
-            toast.success("Design salvo com sucesso no banco de dados!");
+            toast.success("Design salvo com sucesso! Veja em 'Minhas Estampas'");
             console.log('Design saved:', designData);
 
         } catch (error) {
             console.error('Error saving design:', error);
-            toast.error("Erro ao salvar design. Tente novamente.");
+            toast.error("Erro ao salvar design. Verifique sua conexão e tente novamente.");
         }
     };
 
