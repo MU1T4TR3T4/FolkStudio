@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutDashboard, Image as ImageIcon, Palette, ShoppingBag, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Image as ImageIcon, Palette, ShoppingBag, MessageSquare, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -9,6 +9,7 @@ const navigation = [
     { name: "Criar Arte", href: "/dashboard/studio", icon: Palette },
     { name: "Pedidos", href: "/dashboard/orders", icon: ShoppingBag },
     { name: "Minhas Estampas", href: "/dashboard/estampas", icon: ImageIcon },
+    { name: "Clientes", href: "/dashboard/clientes", icon: Users },
     { name: "Chat", href: "/dashboard/chat", icon: MessageSquare },
 ];
 

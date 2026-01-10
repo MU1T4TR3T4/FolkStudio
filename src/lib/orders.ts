@@ -20,6 +20,7 @@ export interface Order {
     notes?: string;
     internal_notes?: string;
     assigned_to?: string;
+    client_id?: string; // Link to clients table
     created_at: string;
     updated_at?: string;
     completed_at?: string;
@@ -102,6 +103,7 @@ export async function createOrder(order: Partial<Order>): Promise<Order | null> 
     try {
         // Prepare order data for Supabase
         const orderData = {
+            client_id: order.client_id, // Added client_id
             customer_name: order.customer_name || 'Cliente',
             customer_email: order.customer_email,
             customer_phone: order.customer_phone,
@@ -116,6 +118,13 @@ export async function createOrder(order: Partial<Order>): Promise<Order | null> 
             payment_method: order.payment_method,
             notes: order.notes,
             internal_notes: order.internal_notes,
+            // Images
+            imageUrl: order.imageUrl,
+            backImageUrl: order.backImageUrl,
+            logoFrontUrl: order.logoFrontUrl,
+            logoBackUrl: order.logoBackUrl,
+            designFront: order.designFront,
+            designBack: order.designBack,
         };
 
         const { data, error } = await supabase
@@ -124,7 +133,10 @@ export async function createOrder(order: Partial<Order>): Promise<Order | null> 
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.warn("Supabase insert error (continuing to localStorage):", error);
+            throw error;
+        }
 
         if (data) {
             console.log('Order created in Supabase:', data.id);

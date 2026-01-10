@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
 import OrderChat from "@/components/shared/OrderChat";
 import { getImage } from "@/lib/storage";
+import { getOrderById } from "@/lib/orders";
 
 interface Order {
     id: string;
@@ -21,6 +22,7 @@ interface Order {
     backImageUrl?: string | null;
     artImageUrl?: string | null;
     backArtImageUrl?: string | null;
+    client_id?: string;
     adminStatus?: "novo" | "producao" | "pronto" | "entregue";
 }
 
@@ -36,33 +38,62 @@ export default function ClientOrderDetailsPage({ params }: { params: Promise<{ i
         loadOrder();
     }, [resolvedParams.id]);
 
+
+
+    // ... imports ...
+
     async function loadOrder() {
         try {
-            const savedOrders = localStorage.getItem("folk_studio_orders");
-            if (savedOrders) {
-                const orders: Order[] = JSON.parse(savedOrders);
-                const found = orders.find(o => o.id === resolvedParams.id);
-                if (found) {
-                    const processedOrder = { ...found };
+            const fetchedOrder = await getOrderById(resolvedParams.id);
 
-                    if (processedOrder.imageUrl?.startsWith('idb:')) {
-                        const key = processedOrder.imageUrl.replace('idb:', '');
-                        const img = await getImage(key);
-                        if (img) processedOrder.imageUrl = img;
-                    }
-
-                    if (processedOrder.backImageUrl?.startsWith('idb:')) {
-                        const key = processedOrder.backImageUrl.replace('idb:', '');
-                        const img = await getImage(key);
-                        if (img) processedOrder.backImageUrl = img;
-                    }
-
-                    setOrder(processedOrder);
-                    setObservations(processedOrder.observations || "");
-                } else {
-                    toast.error("Pedido não encontrado");
-                    router.push("/dashboard/orders");
+            if (fetchedOrder) {
+                // Convert to local Order format with parsed sizes
+                let parsedSizes: Record<string, number> = {};
+                // Handle size parsing (matches List Page logic)
+                if (fetchedOrder.size && fetchedOrder.size.includes(':')) {
+                    fetchedOrder.size.split(',').forEach(p => {
+                        const [s, q] = p.split(':');
+                        if (s && q) parsedSizes[s.trim()] = parseInt(q.trim()) || 0;
+                    });
+                } else if (fetchedOrder.size) {
+                    parsedSizes = { [fetchedOrder.size]: fetchedOrder.quantity || 1 };
                 }
+
+                const processedOrder: Order = {
+                    id: fetchedOrder.id,
+                    imageUrl: fetchedOrder.imageUrl || '',
+                    color: fetchedOrder.color,
+                    material: fetchedOrder.product_type || 'algodao',
+                    sizes: parsedSizes,
+                    totalQty: fetchedOrder.quantity || 0,
+                    observations: fetchedOrder.notes || null,
+                    status: fetchedOrder.status === 'pending' ? 'Pendente' :
+                        fetchedOrder.status === 'in_production' ? 'Em Produção' : 'Concluído',
+                    createdAt: fetchedOrder.created_at,
+                    backImageUrl: fetchedOrder.backImageUrl,
+                    client_id: fetchedOrder.client_id,
+                    adminStatus: (fetchedOrder.status as any) || "novo"
+                };
+
+                // Hydrate images if needed
+                if (processedOrder.imageUrl?.startsWith('idb:')) {
+                    const key = processedOrder.imageUrl.replace('idb:', '');
+                    const img = await getImage(key);
+                    if (img) processedOrder.imageUrl = img;
+                }
+
+                if (processedOrder.backImageUrl?.startsWith('idb:')) {
+                    const key = processedOrder.backImageUrl.replace('idb:', '');
+                    const img = await getImage(key);
+                    if (img) processedOrder.backImageUrl = img;
+                }
+
+                setOrder(processedOrder);
+                setObservations(processedOrder.observations || "");
+            } else {
+                toast.error("Pedido não encontrado");
+                // Don't redirect immediately to allow user to see error or try manual URL fix
+                router.push("/dashboard/orders");
             }
         } catch (error) {
             console.error("Erro ao carregar pedido:", error);

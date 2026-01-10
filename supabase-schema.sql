@@ -513,3 +513,52 @@ SELECT
 FROM pg_tables
 WHERE schemaname = 'public'
 LIMIT 1;
+
+-- ============================================
+-- PARTE 10: CLIENTES (ADICIONADO)
+-- ============================================
+
+-- 10.1 TABELA: clients
+-- Tabela para gerenciamento de clientes pelos usuários (lojistas)
+CREATE TABLE IF NOT EXISTS clients (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- O usuário dono deste registro de cliente
+  name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  company_name TEXT,
+  cpf_cnpj TEXT,
+  address_street TEXT,
+  address_number TEXT,
+  address_complement TEXT,
+  address_neighborhood TEXT,
+  address_city TEXT,
+  address_state TEXT,
+  address_zip TEXT,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Índices para clients
+CREATE INDEX IF NOT EXISTS idx_clients_user_id ON clients(user_id);
+CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
+CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name);
+
+-- Trigger para updated_at em clients
+CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON clients
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Políticas RLS para clients
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read on clients" ON clients FOR SELECT USING (true);
+CREATE POLICY "Allow public insert on clients" ON clients FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update on clients" ON clients FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete on clients" ON clients FOR DELETE USING (true);
+
+-- 10.2 ATUALIZAÇÃO TABELA: orders
+-- Adicionar referência ao cliente cadastrado (opcional, pois pode ser um cliente avulso sem cadastro)
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_id UUID REFERENCES clients(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_orders_client_id ON orders(client_id);

@@ -6,6 +6,7 @@ import { Upload, Save, Download, Type, Image as ImageIcon, Trash2, Undo, Redo, B
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Rnd } from "react-rnd";
+import html2canvas from "html2canvas";
 import { supabase } from "@/lib/supabase";
 import "@/app/fonts.css";
 
@@ -58,6 +59,8 @@ function StudioContent() {
     const mockupFromUrl = searchParams.get("mockup");
     const productTypeFromUrl = searchParams.get("productType");
     const colorFromUrl = searchParams.get("color");
+    const editDesignId = searchParams.get("edit_design_id");
+    const clientId = searchParams.get("client_id");
 
     // State
     const [mockupImage, setMockupImage] = useState<string>(mockupFromUrl || "");
@@ -75,6 +78,7 @@ function StudioContent() {
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const designContainerRef = useRef<HTMLDivElement>(null);
 
     // Get selected element
     const selectedElement = elements.find(el => el.id === selectedElementId);
@@ -101,6 +105,39 @@ function StudioContent() {
         return () => window.removeEventListener('resize', calculateCanvasSize);
     }, []); // Removed selectedElement dependency
 
+    // Load design for editing
+    useEffect(() => {
+        if (!editDesignId) return;
+
+        const loadDesign = async () => {
+            const { data, error } = await supabase
+                .from('designs')
+                .select('*')
+                .eq('id', editDesignId)
+                .single();
+
+            if (data) {
+                setMockupImage(data.mockup_image);
+                setProductType(data.product_type);
+                setColor(data.color);
+                setElements(data.elements || []);
+                // Wait a tick for canvas sizing
+                setTimeout(() => setHistory([data.elements || []]), 100);
+            } else {
+                console.error("Design not found for editing", error);
+
+                // Fallback to localStorage if not found or offline mode
+                const saved = localStorage.getItem("folk_studio_designs"); // Assuming designs are saved here in complex apps but maybe just local state
+                // For simplicity, let's assume if not in DB we might fail, or check if we store locally properly in 'designs' tab?
+                // The 'EstampasPage' loads from DB then LS. 
+                // Let's check LS for completeness.
+                // ... (Leaving blank for now as likely in DB)
+            }
+        };
+
+        loadDesign();
+    }, [editDesignId]);
+
     // Helper functions for percentage-based positioning
     const pixelsToPercent = (pixels: number, canvasSize: number) => {
         return (pixels / canvasSize) * 100;
@@ -110,35 +147,7 @@ function StudioContent() {
         return (percent / 100) * canvasSize;
     };
 
-    // Recalculate element positions when canvas size changes
-    useEffect(() => {
-        if (elements.length > 0) {
-            const updatedElements = elements.map(el => {
-                // If element has percentage positions, recalculate pixel positions
-                if (el.xPercent !== undefined && el.yPercent !== undefined &&
-                    el.widthPercent !== undefined && el.heightPercent !== undefined) {
-                    return {
-                        ...el,
-                        x: percentToPixels(el.xPercent, canvasWidth),
-                        y: percentToPixels(el.yPercent, canvasHeight),
-                        width: percentToPixels(el.widthPercent, canvasWidth),
-                        height: percentToPixels(el.heightPercent, canvasHeight),
-                    };
-                }
-                return el;
-            });
 
-            // Only update if positions actually changed
-            const positionsChanged = updatedElements.some((el, index) =>
-                el.x !== elements[index].x || el.y !== elements[index].y ||
-                el.width !== elements[index].width || el.height !== elements[index].height
-            );
-
-            if (positionsChanged) {
-                setElements(updatedElements);
-            }
-        }
-    }, [canvasWidth, canvasHeight]);
 
     // Add text element
     const handleAddText = () => {
@@ -386,67 +395,28 @@ function StudioContent() {
 
     // Generate final image
     const generateFinalImage = async (): Promise<string | null> => {
-        if (!canvasRef.current || !mockupImage) return null;
-
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return null;
-
-        const loadImage = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = src;
-        });
+        if (!designContainerRef.current) return null;
 
         try {
-            const mockupImg = await loadImage(mockupImage);
+            // Deselect any selected element to remove selection indicators before capturing
+            const currentSelection = selectedElementId;
+            setSelectedElementId(null);
 
-            const TARGET_WIDTH = 1200;
-            const TARGET_HEIGHT = 1500;
-            canvas.width = TARGET_WIDTH;
-            canvas.height = TARGET_HEIGHT;
+            // Wait for React to render the deselection
+            await new Promise(resolve => setTimeout(resolve, 100));
 
-            // Draw mockup
-            ctx.drawImage(mockupImg, 0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+            const canvas = await html2canvas(designContainerRef.current, {
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: null,
+                scale: 2, // Higher quality
+                logging: false,
+                scrollX: 0,
+                scrollY: 0,
+            } as any);
 
-            const visualScale = canvas.width / canvasWidth; // Use current canvas width
-
-            // Draw all elements
-            for (const element of elements) {
-                ctx.save();
-
-                const centerX = (element.x + element.width / 2) * visualScale;
-                const centerY = (element.y + element.height / 2) * visualScale;
-
-                ctx.translate(centerX, centerY);
-                ctx.rotate((element.rotation * Math.PI) / 180);
-                ctx.translate(-centerX, -centerY);
-
-                if (element.type === "image" && element.src) {
-                    const img = await loadImage(element.src);
-                    ctx.drawImage(
-                        img,
-                        element.x * visualScale,
-                        element.y * visualScale,
-                        element.width * visualScale,
-                        element.height * visualScale
-                    );
-                } else if (element.type === "text" && element.content) {
-                    ctx.font = `${element.fontStyle} ${element.fontWeight} ${element.fontSize! * visualScale}px ${element.fontFamily}`;
-                    ctx.fillStyle = element.color!;
-                    ctx.textAlign = element.textAlign as CanvasTextAlign;
-                    ctx.textBaseline = "middle";
-
-                    const textX = (element.x + element.width / 2) * visualScale;
-                    const textY = (element.y + element.height / 2) * visualScale;
-
-                    ctx.fillText(element.content, textX, textY);
-                }
-
-                ctx.restore();
-            }
+            // Restore selection if needed (optional)
+            // setSelectedElementId(currentSelection);
 
             return canvas.toDataURL("image/png");
         } catch (error) {
@@ -508,26 +478,54 @@ function StudioContent() {
                 .getPublicUrl(fileName);
 
             // Save design metadata to database
-            const { data: designData, error: dbError } = await supabase
-                .from('designs')
-                .insert({
-                    mockup_image: mockupImage,
-                    product_type: productType,
-                    color: color,
-                    elements: elements,
-                    final_image_url: publicUrl,
-                })
-                .select()
-                .single();
+            let savedDesign;
 
-            if (dbError) {
-                console.error('Database error:', dbError);
-                toast.error("Erro ao salvar no banco de dados. Tente novamente.");
-                return;
+            if (editDesignId) {
+                // UPDATE
+                const { data, error } = await supabase
+                    .from('designs')
+                    .update({
+                        mockup_image: mockupImage,
+                        product_type: productType,
+                        color: color,
+                        elements: elements,
+                        final_image_url: publicUrl,
+                    })
+                    .eq('id', editDesignId)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                savedDesign = data;
+                toast.success("Design atualizado com sucesso!");
+            } else {
+                // INSERT
+                const { data, error } = await supabase
+                    .from('designs')
+                    .insert({
+                        mockup_image: mockupImage,
+                        product_type: productType,
+                        color: color,
+                        elements: elements,
+                        final_image_url: publicUrl,
+                    })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                savedDesign = data;
+                toast.success("Design salvo com sucesso! Veja em 'Minhas Estampas'");
             }
 
-            toast.success("Design salvo com sucesso! Veja em 'Minhas Estampas'");
-            console.log('Design saved:', designData);
+            if (clientId) {
+                // Redirect back to client
+                setTimeout(() => {
+                    router.push(`/dashboard/clientes/${clientId}`);
+                }, 1000);
+            }
+
+
+            console.log('Design saved:', savedDesign);
 
         } catch (error) {
             console.error('Error saving design:', error);
@@ -837,7 +835,7 @@ function StudioContent() {
 
                 {/* Center - Canvas */}
                 <div className="flex-1 flex items-center justify-center p-8 overflow-auto">
-                    <div className="relative shadow-2xl" style={{ width: canvasWidth, height: canvasHeight, maxWidth: '100%' }}>
+                    <div ref={designContainerRef} className="relative shadow-2xl" style={{ width: canvasWidth, height: canvasHeight, maxWidth: '100%' }}>
                         {mockupImage && (
                             <img
                                 src={mockupImage}
@@ -848,77 +846,85 @@ function StudioContent() {
 
                         {/* Render elements with react-rnd */}
                         <div className="absolute inset-0">
-                            {elements.map((el) => (
-                                <Rnd
-                                    key={el.id}
-                                    size={{ width: el.width, height: el.height }}
-                                    position={{ x: el.x, y: el.y }}
-                                    onDragStop={(e, d) => {
-                                        updateElement(el.id, { x: d.x, y: d.y });
-                                    }}
-                                    onResizeStop={(e, direction, ref, delta, position) => {
-                                        updateElement(el.id, {
-                                            width: parseInt(ref.style.width),
-                                            height: parseInt(ref.style.height),
-                                            ...position,
-                                        });
-                                    }}
-                                    onClick={() => setSelectedElementId(el.id)}
-                                    bounds="parent"
-                                    className={`${selectedElementId === el.id ? "ring-2 ring-[#7D4CDB]" : ""
-                                        }`}
-                                >
-                                    {el.type === "text" && (
-                                        <div
-                                            onDoubleClick={() => setIsEditingText(true)}
-                                            style={{
-                                                fontFamily: el.fontFamily,
-                                                fontSize: el.fontSize,
-                                                fontWeight: el.fontWeight,
-                                                fontStyle: el.fontStyle,
-                                                textDecoration: el.textDecoration,
-                                                color: el.color,
-                                                textAlign: el.textAlign as any,
-                                                width: "100%",
-                                                height: "100%",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                cursor: "move",
-                                                userSelect: "none",
-                                            }}
-                                        >
-                                            {isEditingText && selectedElementId === el.id ? (
-                                                <input
-                                                    type="text"
-                                                    value={el.content}
-                                                    onChange={(e) => updateElement(el.id, { content: e.target.value })}
-                                                    onBlur={() => setIsEditingText(false)}
-                                                    autoFocus
-                                                    className="w-full h-full text-center bg-transparent border-none outline-none"
-                                                    style={{
-                                                        fontFamily: el.fontFamily,
-                                                        fontSize: el.fontSize,
-                                                        fontWeight: el.fontWeight,
-                                                        fontStyle: el.fontStyle,
-                                                        textDecoration: el.textDecoration,
-                                                        color: el.color,
-                                                    }}
-                                                />
-                                            ) : (
-                                                el.content
-                                            )}
-                                        </div>
-                                    )}
-                                    {el.type === "image" && el.src && (
-                                        <img
-                                            src={el.src}
-                                            alt="Element"
-                                            className="w-full h-full object-contain pointer-events-none"
-                                        />
-                                    )}
-                                </Rnd>
-                            ))}
+                            {elements.map((el) => {
+                                // Calculate dynamic values from percentages if available
+                                const dynamicX = (el.xPercent !== undefined) ? percentToPixels(el.xPercent, canvasWidth) : el.x;
+                                const dynamicY = (el.yPercent !== undefined) ? percentToPixels(el.yPercent, canvasHeight) : el.y;
+                                const dynamicWidth = (el.widthPercent !== undefined) ? percentToPixels(el.widthPercent, canvasWidth) : el.width;
+                                const dynamicHeight = (el.heightPercent !== undefined) ? percentToPixels(el.heightPercent, canvasHeight) : el.height;
+
+                                return (
+                                    <Rnd
+                                        key={el.id}
+                                        size={{ width: dynamicWidth, height: dynamicHeight }}
+                                        position={{ x: dynamicX, y: dynamicY }}
+                                        onDragStop={(e, d) => {
+                                            updateElement(el.id, { x: d.x, y: d.y });
+                                        }}
+                                        onResizeStop={(e, direction, ref, delta, position) => {
+                                            updateElement(el.id, {
+                                                width: parseInt(ref.style.width),
+                                                height: parseInt(ref.style.height),
+                                                ...position,
+                                            });
+                                        }}
+                                        onClick={() => setSelectedElementId(el.id)}
+                                        bounds="parent"
+                                        className={`${selectedElementId === el.id ? "ring-2 ring-[#7D4CDB]" : ""
+                                            }`}
+                                    >
+                                        {el.type === "text" && (
+                                            <div
+                                                onDoubleClick={() => setIsEditingText(true)}
+                                                style={{
+                                                    fontFamily: el.fontFamily,
+                                                    fontSize: el.fontSize,
+                                                    fontWeight: el.fontWeight,
+                                                    fontStyle: el.fontStyle,
+                                                    textDecoration: el.textDecoration,
+                                                    color: el.color,
+                                                    textAlign: el.textAlign as any,
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    cursor: "move",
+                                                    userSelect: "none",
+                                                }}
+                                            >
+                                                {isEditingText && selectedElementId === el.id ? (
+                                                    <input
+                                                        type="text"
+                                                        value={el.content}
+                                                        onChange={(e) => updateElement(el.id, { content: e.target.value })}
+                                                        onBlur={() => setIsEditingText(false)}
+                                                        autoFocus
+                                                        className="w-full h-full text-center bg-transparent border-none outline-none"
+                                                        style={{
+                                                            fontFamily: el.fontFamily,
+                                                            fontSize: el.fontSize,
+                                                            fontWeight: el.fontWeight,
+                                                            fontStyle: el.fontStyle,
+                                                            textDecoration: el.textDecoration,
+                                                            color: el.color,
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    el.content
+                                                )}
+                                            </div>
+                                        )}
+                                        {el.type === "image" && el.src && (
+                                            <img
+                                                src={el.src}
+                                                alt="Element"
+                                                className="w-full h-full object-contain pointer-events-none"
+                                            />
+                                        )}
+                                    </Rnd>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

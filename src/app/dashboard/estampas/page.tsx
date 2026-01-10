@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trash2, Download, Plus, Image as ImageIcon, Wand2, Shirt, Eye, ShoppingBag, X, Palette } from "lucide-react";
+import { Trash2, Download, Plus, Image as ImageIcon, Wand2, Shirt, Eye, ShoppingBag, X, Palette, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getImage } from "@/lib/storage";
 import { supabase, Design } from "@/lib/supabase";
+import { assignStampsToClient } from "@/lib/clients";
 
 interface Stamp {
     id: string;
@@ -32,10 +33,55 @@ export default function EstampasPage() {
     const [viewingStamp, setViewingStamp] = useState<Stamp | null>(null);
     const [viewingDesign, setViewingDesign] = useState<Design | null>(null);
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Context for assigning stamp to a client
+    const clientId = searchParams.get('select_for_client');
+    const clientName = searchParams.get('client_name');
+
+    const isSelectionMode = !!clientId;
+    const [selectedItems, setSelectedItems] = useState<{ id: string; type: 'stamp' | 'design' }[]>([]);
 
     useEffect(() => {
         loadAllData();
-    }, []);
+        if (isSelectionMode) {
+            // Reset selection on mount if needed
+            setSelectedItems([]);
+        }
+    }, [isSelectionMode]); // Removed clientName dependency to avoid double toast if not needed, kept loadAllData.
+
+    /* Removed duplicate effect for toast */
+    useEffect(() => {
+        if (isSelectionMode && clientName) {
+            toast.info(`Selecione ou crie um modelo para ${clientName}`, { duration: 5000 });
+        }
+    }, [isSelectionMode, clientName]);
+
+    function toggleSelection(id: string, type: 'stamp' | 'design') {
+        setSelectedItems(prev => {
+            const exists = prev.find(item => item.id === id && item.type === type);
+            if (exists) {
+                return prev.filter(item => !(item.id === id && item.type === type));
+            } else {
+                return [...prev, { id, type }];
+            }
+        });
+    }
+
+    async function handleConfirmSelection() {
+        if (!clientId || selectedItems.length === 0) return;
+
+        try {
+            setLoading(true);
+            await assignStampsToClient(clientId, selectedItems);
+            toast.success(`${selectedItems.length} item(s) atribuído(s) ao cliente!`);
+            router.push(`/dashboard/clientes/${clientId}`);
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao atribuir estampas");
+            setLoading(false);
+        }
+    }
 
     async function loadAllData() {
         try {
@@ -172,7 +218,14 @@ export default function EstampasPage() {
             };
             localStorage.setItem("folk_studio_draft_order", JSON.stringify(draftOrder));
             toast.success("Redirecionando para criar pedido...");
-            router.push("/dashboard/orders");
+
+            let url = "/dashboard/orders";
+            // If selecting for client, pass params to auto-open and assign
+            if (clientId && clientName) {
+                url += `?new=true&client_id=${clientId}&client_name=${encodeURIComponent(clientName)}`;
+            }
+
+            router.push(url);
         } catch (error) {
             console.error(error);
             toast.error("Erro ao iniciar pedido");
@@ -219,7 +272,13 @@ export default function EstampasPage() {
             };
             localStorage.setItem("folk_studio_draft_order", JSON.stringify(draftOrder));
             toast.success("Redirecionando para criar pedido...");
-            router.push("/dashboard/orders");
+
+            let url = "/dashboard/orders";
+            if (clientId && clientName) {
+                url += `?new=true&client_id=${clientId}&client_name=${encodeURIComponent(clientName)}`;
+            }
+
+            router.push(url);
         } catch (error) {
             console.error(error);
             toast.error("Erro ao iniciar pedido");
@@ -239,6 +298,40 @@ export default function EstampasPage() {
     return (
         <div className="p-8 space-y-8">
             <Toaster position="top-right" richColors />
+
+            {isSelectionMode && clientName && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-center justify-between sticky top-0 z-40 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <ShoppingBag className="h-5 w-5" />
+                        <div>
+                            <p className="font-semibold">Selecionando para {clientName}</p>
+                            <p className="text-sm text-blue-600">
+                                {selectedItems.length === 0
+                                    ? "Escolha uma ou mais estampas abaixo."
+                                    : `${selectedItems.length} estampa(s) selecionada(s).`}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.push(`/dashboard/clientes/${clientId}`)}
+                            className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleConfirmSelection}
+                            disabled={selectedItems.length === 0}
+                            className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                        >
+                            Confirmar Seleção
+                        </Button>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Minhas Estampas</h1>
@@ -275,13 +368,26 @@ export default function EstampasPage() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {designs.map((design) => (
-                                    <div key={design.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col">
-                                        <div className="bg-gray-100 p-4">
+                                    <div key={design.id} className={`bg-white rounded-xl border shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col relative ${isSelectionMode && selectedItems.some(i => i.id === design.id) ? 'border-blue-500' : 'border-gray-200'}`}>
+                                        <div className="bg-gray-100 p-4 relative">
                                             <img
                                                 src={design.final_image_url || '/placeholder.png'}
                                                 alt={`Design ${design.product_type}`}
                                                 className="w-full aspect-square object-contain rounded"
                                             />
+                                            {isSelectionMode && (
+                                                <div
+                                                    className={`absolute inset-0 bg-black/10 flex items-center justify-center cursor-pointer transition-all ${selectedItems.some(i => i.id === design.id) ? 'bg-blue-500/20 ring-4 ring-inset ring-blue-500' : 'hover:bg-black/5'
+                                                        }`}
+                                                    onClick={() => toggleSelection(design.id, 'design')}
+                                                >
+                                                    {selectedItems.some(i => i.id === design.id) && (
+                                                        <div className="bg-blue-500 text-white p-2 rounded-full shadow-lg scale-110">
+                                                            <Check className="h-6 w-6" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="p-4 flex-1 flex flex-col">
                                             <h3 className="font-semibold text-gray-900 mb-1 capitalize">
@@ -335,8 +441,8 @@ export default function EstampasPage() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {stamps.map((stamp) => (
-                                    <div key={stamp.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col">
-                                        <div className="grid grid-cols-2 gap-1 bg-gray-100 p-2">
+                                    <div key={stamp.id} className={`bg-white rounded-xl border shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col relative ${isSelectionMode && selectedItems.some(i => i.id === stamp.id) ? 'border-blue-500' : 'border-gray-200'}`}>
+                                        <div className="grid grid-cols-2 gap-1 bg-gray-100 p-2 relative">
                                             <div className="bg-white rounded p-1">
                                                 <p className="text-xs text-gray-500 mb-1 text-center">Frente</p>
                                                 <img src={stamp.frontImageUrl} alt="Frente" className="w-full aspect-square object-contain" />
@@ -345,6 +451,19 @@ export default function EstampasPage() {
                                                 <div className="bg-white rounded p-1">
                                                     <p className="text-xs text-gray-500 mb-1 text-center">Costas</p>
                                                     <img src={stamp.backImageUrl} alt="Costas" className="w-full aspect-square object-contain" />
+                                                </div>
+                                            )}
+                                            {isSelectionMode && (
+                                                <div
+                                                    className={`absolute inset-0 z-10 flex items-center justify-center cursor-pointer transition-all ${selectedItems.some(i => i.id === stamp.id) ? 'bg-blue-500/20 ring-4 ring-inset ring-blue-500' : 'hover:bg-black/5'
+                                                        }`}
+                                                    onClick={() => toggleSelection(stamp.id, 'stamp')}
+                                                >
+                                                    {selectedItems.some(i => i.id === stamp.id) && (
+                                                        <div className="bg-blue-500 text-white p-2 rounded-full shadow-lg scale-110">
+                                                            <Check className="h-6 w-6" />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>

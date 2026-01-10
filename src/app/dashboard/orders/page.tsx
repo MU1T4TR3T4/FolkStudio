@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Plus, Upload, ShoppingBag, Package, CheckCircle, Clock, Trash2, Eye } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Plus, Upload, ShoppingBag, Package, CheckCircle, Clock, Trash2, Eye, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
 import { saveImage, getImage } from "@/lib/storage";
@@ -21,10 +21,19 @@ interface Order {
     backImageUrl?: string | null;
     artImageUrl?: string | null;
     backArtImageUrl?: string | null;
+    client_id?: string;
+    customer_name?: string;
 }
 
 export default function OrdersPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Check URL params for auto-opening new order modal
+    const isNewOrderRequested = searchParams.get('new') === 'true';
+    const preselectedClientId = searchParams.get('client_id');
+    const preselectedClientName = searchParams.get('client_name');
+
     const [showNewOrderForm, setShowNewOrderForm] = useState(false);
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
@@ -33,9 +42,17 @@ export default function OrdersPage() {
     useEffect(() => {
         loadOrders();
         checkDraftOrder();
-    }, []);
+
+        // Handle URL params
+        if (isNewOrderRequested) {
+            setShowNewOrderForm(true);
+        }
+    }, [isNewOrderRequested]); // Re-run if params change
 
     function checkDraftOrder() {
+        // Skip draft check if we are explicitly requested to start a new fresh order via URL
+        if (isNewOrderRequested) return;
+
         const draft = localStorage.getItem("folk_studio_draft_order");
         if (draft) {
             try {
@@ -53,52 +70,70 @@ export default function OrdersPage() {
 
     async function loadOrders() {
         try {
+            let loadedOrders: Order[] = [];
+
             // Try loading from Supabase first
             const supabaseOrders = await getAllOrders();
 
             if (supabaseOrders && supabaseOrders.length > 0) {
-                // Convert Supabase format to local format if needed
-                const convertedOrders: Order[] = supabaseOrders.map(order => ({
-                    id: order.id,
-                    imageUrl: order.imageUrl || '',
-                    color: order.color,
-                    material: order.product_type || 'algodao',
-                    sizes: order.size ? { [order.size]: order.quantity } : {},
-                    totalQty: order.quantity,
-                    observations: order.notes || null,
-                    status: order.status === 'pending' ? 'Pendente' :
-                        order.status === 'in_production' ? 'Em Produção' : 'Concluído',
-                    createdAt: order.created_at,
-                    backImageUrl: order.backImageUrl,
-                }));
-                setOrders(convertedOrders);
+                // Convert Supabase format to local format
+                loadedOrders = supabaseOrders.map(order => {
+                    // Tentar parsear tamanhos se estiver no formato "Tamanho:Qtd"
+                    let parsedSizes: Record<string, number> = {};
+                    if (order.size && order.size.includes(':')) {
+                        order.size.split(',').forEach(p => {
+                            const [s, q] = p.split(':');
+                            if (s && q) parsedSizes[s.trim()] = parseInt(q.trim()) || 0;
+                        });
+                    } else if (order.size) {
+                        parsedSizes = { [order.size]: order.quantity };
+                    }
+
+                    return {
+                        id: order.id,
+                        imageUrl: order.imageUrl || '',
+                        color: order.color,
+                        material: order.product_type || 'algodao',
+                        sizes: parsedSizes,
+                        totalQty: order.quantity,
+                        observations: order.notes || null,
+                        status: order.status === 'pending' ? 'Pendente' :
+                            order.status === 'in_production' ? 'Em Produção' : 'Concluído',
+                        createdAt: order.created_at,
+                        backImageUrl: order.backImageUrl,
+                        client_id: order.client_id,
+                        customer_name: order.customer_name
+                    };
+                });
             } else {
                 // Fallback to localStorage
                 const savedOrders = localStorage.getItem("folk_studio_orders");
                 if (savedOrders) {
-                    const parsedOrders: Order[] = JSON.parse(savedOrders);
-
-                    // Carregar imagens do IDB se necessário
-                    const processedOrders = await Promise.all(parsedOrders.map(async (order) => {
-                        const newOrder = { ...order };
-                        if (newOrder.imageUrl?.startsWith('idb:')) {
-                            const key = newOrder.imageUrl.replace('idb:', '');
-                            const img = await getImage(key);
-                            if (img) newOrder.imageUrl = img;
-                        }
-                        if (newOrder.backImageUrl?.startsWith('idb:')) {
-                            const key = newOrder.backImageUrl.replace('idb:', '');
-                            const img = await getImage(key);
-                            if (img) newOrder.backImageUrl = img;
-                        }
-                        return newOrder;
-                    }));
-
-                    setOrders(processedOrders);
+                    loadedOrders = JSON.parse(savedOrders);
                 }
             }
+
+            // Hydrate Images from IDB (Crucial for images saved as idb:...)
+            const processedOrders = await Promise.all(loadedOrders.map(async (order) => {
+                const newOrder = { ...order };
+                if (newOrder.imageUrl?.startsWith('idb:')) {
+                    const key = newOrder.imageUrl.replace('idb:', '');
+                    const img = await getImage(key);
+                    if (img) newOrder.imageUrl = img;
+                }
+                if (newOrder.backImageUrl?.startsWith('idb:')) {
+                    const key = newOrder.backImageUrl.replace('idb:', '');
+                    const img = await getImage(key);
+                    if (img) newOrder.backImageUrl = img;
+                }
+                return newOrder;
+            }));
+
+            setOrders(processedOrders);
+
         } catch (error) {
             console.error("Erro ao carregar pedidos:", error);
+            toast.error("Erro ao carregar pedidos");
         } finally {
             setLoading(false);
         }
@@ -139,6 +174,11 @@ export default function OrdersPage() {
         );
     };
 
+    // Determine props for new order form
+    const preselectedClient = (preselectedClientId && preselectedClientName)
+        ? { id: preselectedClientId, name: preselectedClientName }
+        : undefined;
+
     return (
         <div className="space-y-8">
             <Toaster position="top-right" richColors />
@@ -167,10 +207,21 @@ export default function OrdersPage() {
             {showNewOrderForm && (
                 <NewOrderForm
                     initialData={draftOrderData}
-                    onClose={() => setShowNewOrderForm(false)}
+                    preselectedClient={preselectedClient}
+                    onClose={() => {
+                        setShowNewOrderForm(false);
+                        // Clear URL params if present
+                        if (isNewOrderRequested) {
+                            router.replace('/dashboard/orders');
+                        }
+                    }}
                     onSuccess={() => {
                         setShowNewOrderForm(false);
                         loadOrders();
+                        // Clear URL params if present
+                        if (isNewOrderRequested) {
+                            router.replace('/dashboard/orders');
+                        }
                     }}
                 />
             )}
@@ -220,6 +271,9 @@ export default function OrdersPage() {
                                     {getStatusBadge(order.status)}
                                 </div>
                                 <div className="space-y-1 text-xs text-gray-600">
+                                    {order.customer_name && (
+                                        <p><span className="font-medium">Cliente:</span> {order.customer_name}</p>
+                                    )}
                                     <p><span className="font-medium">Cor:</span> <span className="capitalize">{order.color}</span></p>
                                     <p><span className="font-medium">Material:</span> <span className="capitalize">{order.material}</span></p>
                                     <p><span className="font-medium">Tamanhos:</span> {Object.entries(order.sizes).filter(([_, qty]) => qty > 0).map(([size, qty]) => `${size}(${qty})`).join(", ")}</p>
@@ -249,18 +303,15 @@ export default function OrdersPage() {
     );
 }
 
-function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void; onSuccess: () => void; initialData?: any }) {
+function NewOrderForm({ onClose, onSuccess, initialData, preselectedClient }: { onClose: () => void; onSuccess: () => void; initialData?: any; preselectedClient?: { id: string, name: string } }) {
     const [image, setImage] = useState<string | null>(initialData?.imageUrl || null);
     const [backImage, setBackImage] = useState<string | null>(initialData?.backImageUrl || null);
     const [color, setColor] = useState(initialData?.color || "white");
     const [sizes, setSizes] = useState<Record<string, number>>({
-        P: 0,
-        M: 0,
-        G: 0,
-        GG: 0,
-        XG: 0,
+        "M-P": 0, "M-M": 0, "M-G": 0, "M-GG": 0, "M-XG": 0,
+        "F-P": 0, "F-M": 0, "F-G": 0, "F-GG": 0, "F-XG": 0,
     });
-    const [material, setMaterial] = useState("algodao");
+    const [material, setMaterial] = useState("PV");
     const [observations, setObservations] = useState("");
 
     const [saving, setSaving] = useState(false);
@@ -419,26 +470,36 @@ function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void
             if (artImage) await saveImage(`order-art-front-${orderId}`, artImage);
             if (backArtImage) await saveImage(`order-art-back-${orderId}`, backArtImage);
 
-            const newOrder: Order = {
+            // Construct payload for createOrder (matches lib/orders.ts interface)
+            const dbOrder: any = {
                 id: orderId,
+                client_id: preselectedClient?.id,
+                customer_name: preselectedClient?.name || 'Cliente',
+
+                product_type: material,
+                color: color,
+                quantity: totalQuantity,
+                size: Object.entries(sizes).filter(([_, v]) => v > 0).map(([s, v]) => `${s}:${v}`).join(', '),
+                notes: observations.trim() || undefined,
+                status: "pending",
+                created_at: new Date().toISOString(),
+
+                // Images
                 imageUrl: `idb:order-front-${orderId}`,
-                color,
-                material,
-                sizes,
-                totalQty: totalQuantity,
-                observations: observations.trim() || null,
-                status: "Pendente",
-                createdAt: new Date().toISOString(),
-                backImageUrl: backImage ? `idb:order-back-${orderId}` : null,
-                artImageUrl: artImage ? `idb:order-art-front-${orderId}` : null,
-                backArtImageUrl: backArtImage ? `idb:order-art-back-${orderId}` : null,
+                backImageUrl: backImage ? `idb:order-back-${orderId}` : undefined,
+                logoFrontUrl: artImage ? `idb:order-art-front-${orderId}` : undefined,
+                logoBackUrl: backArtImage ? `idb:order-art-back-${orderId}` : undefined,
             };
 
-            // Salvar no localStorage
-            const savedOrders = localStorage.getItem("folk_studio_orders");
-            const orders = savedOrders ? JSON.parse(savedOrders) : [];
-            orders.unshift(newOrder); // Adicionar no início
-            localStorage.setItem("folk_studio_orders", JSON.stringify(orders));
+            // Call Supabase/Lib create function
+            await createOrder(dbOrder);
+
+            // Also update local state for immediate UI feedback if needed (but onSuccess triggers reload usually)
+            // Ideally we rely on onSuccess -> loadOrders, but purely local app might need local update?
+            // loadOrders fetches from storage/DB so it should be fine.
+
+            // Legacy local update for immediate feel if offline? 
+            // The lib creates it in localStorage so loadOrders will see it.
 
             toast.success("Pedido criado com sucesso!");
             onSuccess();
@@ -461,6 +522,14 @@ function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void
                 </div>
 
                 <div className="space-y-6">
+                    {/* Client Indicator */}
+                    {preselectedClient && (
+                        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg flex items-center gap-2 text-blue-700">
+                            <User className="h-4 w-4" />
+                            <span className="text-sm font-medium">Pedido para: <strong>{preselectedClient.name}</strong></span>
+                        </div>
+                    )}
+
                     {/* Upload de Imagem */}
                     <div>
                         <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -521,66 +590,72 @@ function NewOrderForm({ onClose, onSuccess, initialData }: { onClose: () => void
                         </div>
                     </div>
 
-                    {/* Cor da Camisa */}
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-900 mb-2">
-                            Cor da Camisa
-                        </label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {["white", "black", "blue"].map((c) => (
-                                <button
-                                    key={c}
-                                    onClick={() => setColor(c)}
-                                    className={`p-3 rounded-lg border-2 transition-all ${color === c ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200"
-                                        }`}
-                                >
-                                    <div className="w-full h-8 rounded" style={{ backgroundColor: c === "white" ? "#f3f4f6" : c }} />
-                                    <p className="text-xs mt-1 capitalize">{c}</p>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
                     {/* Tamanhos e Quantidades */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                        <label className="block text-sm font-semibold text-gray-900 mb-4">
                             Tamanhos e Quantidades
                         </label>
-                        <div className="grid grid-cols-5 gap-2">
-                            {Object.keys(sizes).map((size) => (
-                                <div key={size}>
-                                    <label className="block text-xs text-gray-600 mb-1">{size}</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={sizes[size]}
-                                        onChange={(e) => setSizes({ ...sizes, [size]: parseInt(e.target.value) || 0 })}
-                                        className="w-full px-2 py-1 border border-gray-300 rounded text-center"
-                                    />
-                                </div>
-                            ))}
+
+                        {/* Masculino */}
+                        <div className="mb-4">
+                            <p className="text-xs font-bold text-gray-500 mb-2 uppercase bg-gray-50 p-1 rounded inline-block">Masculino</p>
+                            <div className="grid grid-cols-5 gap-2">
+                                {["P", "M", "G", "GG", "XG"].map((s) => (
+                                    <div key={`M-${s}`}>
+                                        <label className="block text-[10px] text-gray-400 mb-1 text-center">{s}</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            value={sizes[`M-${s}`] || 0}
+                                            onChange={(e) => setSizes({ ...sizes, [`M-${s}`]: parseInt(e.target.value) || 0 })}
+                                            className="w-full px-1 py-2 border border-gray-300 rounded-lg text-center text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <p className="text-sm text-gray-600 mt-2">Total: {totalQuantity} unidades</p>
+
+                        {/* Feminino */}
+                        <div className="mb-2">
+                            <p className="text-xs font-bold text-gray-500 mb-2 uppercase bg-gray-50 p-1 rounded inline-block">Feminino</p>
+                            <div className="grid grid-cols-5 gap-2">
+                                {["P", "M", "G", "GG", "XG"].map((s) => (
+                                    <div key={`F-${s}`}>
+                                        <label className="block text-[10px] text-gray-400 mb-1 text-center">{s}</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            value={sizes[`F-${s}`] || 0}
+                                            onChange={(e) => setSizes({ ...sizes, [`F-${s}`]: parseInt(e.target.value) || 0 })}
+                                            className="w-full px-1 py-2 border border-gray-300 rounded-lg text-center text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-lg flex justify-between items-center">
+                            <span className="text-xs font-medium text-blue-800">Total de Peças</span>
+                            <span className="text-lg font-bold text-blue-700">{totalQuantity}</span>
+                        </div>
                     </div>
 
                     {/* Material */}
                     <div>
                         <label className="block text-sm font-semibold text-gray-900 mb-2">
-                            Material
+                            Material (Tecido)
                         </label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {[
-                                { value: "algodao", label: "Algodão" },
-                                { value: "poliester", label: "Poliéster" },
-                                { value: "dryfit", label: "Dryfit" },
-                            ].map((mat) => (
+                        <div className="grid grid-cols-4 gap-2">
+                            {["PV", "AL", "DRY", "PA"].map((mat) => (
                                 <button
-                                    key={mat.value}
-                                    onClick={() => setMaterial(mat.value)}
-                                    className={`p-3 rounded-lg border-2 transition-all ${material === mat.value ? "border-blue-500 bg-blue-50" : "border-gray-200"
+                                    key={mat}
+                                    onClick={() => setMaterial(mat)}
+                                    className={`p-3 rounded-xl border-2 transition-all ${material === mat ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm" : "border-gray-100 bg-white text-gray-500 hover:border-gray-300"
                                         }`}
                                 >
-                                    <p className="text-sm font-medium">{mat.label}</p>
+                                    <p className="text-sm font-bold">{mat}</p>
                                 </button>
                             ))}
                         </div>
