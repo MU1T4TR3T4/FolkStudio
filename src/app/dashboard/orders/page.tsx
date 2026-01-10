@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Upload, ShoppingBag, Package, CheckCircle, Clock, Trash2, Eye, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ interface Order {
     customer_name?: string;
 }
 
-export default function OrdersPage() {
+function OrdersContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -738,5 +738,13 @@ function NewOrderForm({ onClose, onSuccess, initialData, preselectedClient }: { 
                 )}
             </div>
         </div>
+    );
+}
+
+export default function OrdersPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center text-gray-500">Carregando...</div>}>
+            <OrdersContent />
+        </Suspense>
     );
 }

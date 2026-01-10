@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Trash2, Download, Plus, Image as ImageIcon, Wand2, Shirt, Eye, ShoppingBag, X, Palette, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
@@ -23,7 +23,7 @@ interface Stamp {
     designBack?: { x: number; y: number; width: number; height: number; rotation: number } | null;
 }
 
-export default function EstampasPage() {
+function EstampasContent() {
     const [activeTab, setActiveTab] = useState<"designs" | "models" | "ai" | "uploads">("designs");
     const [designs, setDesigns] = useState<Design[]>([]);
     const [stamps, setStamps] = useState<Stamp[]>([]);
@@ -632,5 +632,13 @@ export default function EstampasPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function EstampasPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center text-gray-500">Carregando...</div>}>
+            <EstampasContent />
+        </Suspense>
     );
 }
