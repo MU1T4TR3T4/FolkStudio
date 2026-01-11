@@ -76,8 +76,13 @@ function EstampasContent() {
 
         try {
             setLoading(true);
-            await assignStampsToClient(clientId, selectedItems);
-            toast.success(`${selectedItems.length} item(s) atribuído(s) ao cliente!`);
+            const result = await assignStampsToClient(clientId, selectedItems);
+
+            if (result.offline) {
+                toast.warning("ATENÇÃO: Salvo apenas neste PC! O link NÃO abrirá no celular. Execute o script SQL no Supabase para corrigir.", { duration: 10000 });
+            } else {
+                toast.success(`${selectedItems.length} item(s) atribuído(s) ao cliente!`);
+            }
             router.push(`/dashboard/clientes/${clientId}`);
         } catch (error) {
             console.error(error);

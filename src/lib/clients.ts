@@ -234,7 +234,7 @@ export interface ClientStamp {
 /**
  * Assign multiple stamps/designs to a client
  */
-export async function assignStampsToClient(clientId: string, items: { id: string, type: 'stamp' | 'design' }[]): Promise<boolean> {
+export async function assignStampsToClient(clientId: string, items: { id: string, type: 'stamp' | 'design' }[]): Promise<{ success: boolean; offline: boolean }> {
     try {
         const toInsert = items.map(item => ({
             client_id: clientId,
@@ -250,7 +250,7 @@ export async function assignStampsToClient(clientId: string, items: { id: string
 
         if (error) throw error;
 
-        return true;
+        return { success: true, offline: false };
     } catch (error) {
         console.error('Error assigning stamps:', error);
         // Fallback to localStorage
@@ -266,7 +266,7 @@ export async function assignStampsToClient(clientId: string, items: { id: string
             approval_token: crypto.randomUUID()
         }));
         localStorage.setItem('folk_studio_client_stamps', JSON.stringify([...current, ...newItems]));
-        return true;
+        return { success: true, offline: true };
     }
 }
 
