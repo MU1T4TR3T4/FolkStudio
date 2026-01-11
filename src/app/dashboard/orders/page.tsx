@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Upload, ShoppingBag, Package, CheckCircle, Clock, Trash2, Eye, User } from "lucide-react";
+import { Plus, Upload, ShoppingBag, Package, CheckCircle, Clock, Trash2, Eye, User, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast, Toaster } from "sonner";
 import { saveImage, getImage } from "@/lib/storage";
 import { getAllOrders, createOrder, deleteOrder as deleteOrderFromDB } from "@/lib/orders";
@@ -323,6 +324,138 @@ function NewOrderForm({ onClose, onSuccess, initialData, preselectedClient }: { 
     const [showStampSelector, setShowStampSelector] = useState(false);
     const [savedStamps, setSavedStamps] = useState<any[]>([]);
 
+    // Preview Modal State
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [zoomLevel, setZoomLevel] = useState(1);
+
+    // Zoom Panning logic
+    const previewContainerRef = useRef<HTMLDivElement>(null);
+    const isDraggingRef = useRef(false);
+    const startPosRef = useRef({ x: 0, y: 0 });
+    const scrollPosRef = useRef({ left: 0, top: 0 });
+    const hasMovedRef = useRef(false);
+
+    // Zoom Focus Logic
+    // Store relative mouse position (0-1) before zoom to restore it after
+    const lastZoomPointerRef = useRef({ x: 0.5, y: 0.5 });
+    const needsScrollCorrectionRef = useRef(false);
+
+    useEffect(() => {
+        const container = previewContainerRef.current;
+        if (!container) return;
+
+        const onWheel = (e: WheelEvent) => {
+            if (!previewImage) return;
+            e.preventDefault();
+
+            // Calculate pointer relative position (0-1) in container viewport
+            const rect = container.getBoundingClientRect();
+
+            // "Point under mouse" in scrollable space
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const absoluteX = container.scrollLeft + mouseX;
+            const absoluteY = container.scrollTop + mouseY;
+
+            lastZoomPointerRef.current = {
+                x: absoluteX / zoomLevel, // unscaled units
+                y: absoluteY / zoomLevel, // unscaled units
+            };
+
+            // Target mouse position on screen (to restore to)
+            startPosRef.current = { x: mouseX, y: mouseY }; // reusing startPosRef for temporary storage of screen target
+
+            needsScrollCorrectionRef.current = true;
+
+            const delta = -Math.sign(e.deltaY) * 0.5; // Faster zoom
+            setZoomLevel(prev => {
+                const newZoom = Math.max(1, Math.min(prev + delta, 5));
+                return newZoom;
+            });
+        };
+
+        container.addEventListener('wheel', onWheel, { passive: false });
+
+        return () => {
+            container.removeEventListener('wheel', onWheel);
+        };
+    }, [previewImage, zoomLevel]); // Dependencies need to include zoomLevel to calculate absolute position correctly
+
+    // Apply scroll correction after zoom change
+    useEffect(() => {
+        if (needsScrollCorrectionRef.current && previewContainerRef.current) {
+            const container = previewContainerRef.current;
+            const targetUnscaled = lastZoomPointerRef.current;
+            const screenTarget = startPosRef.current; // The mouse position on screen should stay here
+
+            const newAbsoluteX = targetUnscaled.x * zoomLevel;
+            const newAbsoluteY = targetUnscaled.y * zoomLevel;
+
+            container.scrollLeft = newAbsoluteX - screenTarget.x;
+            container.scrollTop = newAbsoluteY - screenTarget.y;
+
+            needsScrollCorrectionRef.current = false;
+        }
+    }, [zoomLevel]); // Runs after zoom update
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (zoomLevel <= 1 || !previewContainerRef.current) return;
+        isDraggingRef.current = true;
+        hasMovedRef.current = false;
+        startPosRef.current = { x: e.pageX, y: e.pageY };
+        scrollPosRef.current = {
+            left: previewContainerRef.current.scrollLeft,
+            top: previewContainerRef.current.scrollTop
+        };
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDraggingRef.current || zoomLevel <= 1 || !previewContainerRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - startPosRef.current.x;
+        const y = e.pageY - startPosRef.current.y;
+
+        if (Math.abs(x) > 5 || Math.abs(y) > 5) {
+            hasMovedRef.current = true;
+        }
+
+        previewContainerRef.current.scrollLeft = scrollPosRef.current.left - x;
+        previewContainerRef.current.scrollTop = scrollPosRef.current.top - y;
+    };
+
+    const handleMouseUp = () => {
+        isDraggingRef.current = false;
+    };
+
+    const handlePreviewClick = (e: React.MouseEvent) => {
+        if (!hasMovedRef.current && previewContainerRef.current) {
+            const container = previewContainerRef.current;
+            const rect = container.getBoundingClientRect();
+
+            // Prepare for zoom toggle (similar logic to wheel)
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const absoluteX = container.scrollLeft + mouseX;
+            const absoluteY = container.scrollTop + mouseY;
+
+            lastZoomPointerRef.current = {
+                x: absoluteX / zoomLevel,
+                y: absoluteY / zoomLevel,
+            };
+            startPosRef.current = { x: mouseX, y: mouseY };
+            needsScrollCorrectionRef.current = true;
+
+            // Toggle between 1x and 2x if clicked without dragging
+            setZoomLevel(prev => prev > 1.1 ? 1 : 2); // 1.1 tolerant threshold
+        }
+    };
+
+    // Reset zoom when opening new image
+    useEffect(() => {
+        setZoomLevel(1);
+    }, [previewImage]);
+
     useEffect(() => {
         const stamps = localStorage.getItem("folk_studio_stamps");
         if (stamps) {
@@ -548,7 +681,7 @@ function NewOrderForm({ onClose, onSuccess, initialData, preselectedClient }: { 
                             </Button>
                         </div>
 
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer relative">
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors relative">
                             <input
                                 type="file"
                                 accept="image/*"
@@ -556,37 +689,49 @@ function NewOrderForm({ onClose, onSuccess, initialData, preselectedClient }: { 
                                 className="hidden"
                                 id="order-image-upload"
                             />
-                            <label htmlFor="order-image-upload" className="cursor-pointer block w-full h-full">
-                                {image ? (
-                                    backImage ? (
+                            {image ? (
+                                <div className="w-full">
+                                    {backImage ? (
                                         // Mostrar frente e costas lado a lado
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="text-center">
+                                        <div className="grid grid-cols-2 gap-4 cursor-pointer" onClick={() => setPreviewImage(image)}>
+                                            <div className="text-center group relative">
                                                 <p className="text-xs text-gray-500 mb-2">Frente</p>
                                                 <img src={image} alt="Frente" className="max-h-48 mx-auto rounded shadow-sm" />
+                                                <div className="absolute inset-0 top-6 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium rounded">
+                                                    <Eye className="h-4 w-4 mr-2" /> Visualizar
+                                                </div>
                                             </div>
-                                            <div className="text-center">
+                                            <div className="text-center group relative" onClick={(e) => { e.stopPropagation(); setPreviewImage(backImage); }}>
                                                 <p className="text-xs text-gray-500 mb-2">Costas</p>
                                                 <img src={backImage} alt="Costas" className="max-h-48 mx-auto rounded shadow-sm" />
+                                                <div className="absolute inset-0 top-6 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium rounded">
+                                                    <Eye className="h-4 w-4 mr-2" /> Visualizar
+                                                </div>
                                             </div>
                                         </div>
                                     ) : (
                                         // Mostrar apenas frente
-                                        <div className="relative group">
+                                        <div className="relative group cursor-pointer" onClick={() => setPreviewImage(image)}>
                                             <img src={image} alt="Preview" className="max-h-48 mx-auto rounded shadow-sm" />
                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium rounded">
-                                                Clique para alterar
+                                                <Eye className="h-4 w-4 mr-2" /> Visualizar
                                             </div>
                                         </div>
-                                    )
-                                ) : (
-                                    <div>
-                                        <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                                        <p className="text-sm text-gray-600">Ou faça upload de uma imagem</p>
-                                        <p className="text-xs text-gray-400 mt-1">PNG, JPG (max. 5MB)</p>
+                                    )}
+
+                                    <div className="mt-4 flex justify-center">
+                                        <label htmlFor="order-image-upload" className="text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center">
+                                            <Upload className="h-3 w-3 mr-1" /> Alterar imagem (Upload)
+                                        </label>
                                     </div>
-                                )}
-                            </label>
+                                </div>
+                            ) : (
+                                <label htmlFor="order-image-upload" className="cursor-pointer block w-full h-full">
+                                    <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                                    <p className="text-sm text-gray-600">Ou faça upload de uma imagem</p>
+                                    <p className="text-xs text-gray-400 mt-1">PNG, JPG (max. 5MB)</p>
+                                </label>
+                            )}
                         </div>
                     </div>
 
@@ -736,8 +881,53 @@ function NewOrderForm({ onClose, onSuccess, initialData, preselectedClient }: { 
                         </div>
                     </div>
                 )}
+
+                {/* Preview Dialog */}
+                <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+                    <DialogContent className="max-w-4xl w-full p-0 overflow-hidden bg-white rounded-lg shadow-2xl border-0 flex flex-col max-h-[90vh]">
+                        <DialogHeader className="px-6 py-4 border-b border-gray-100 flex flex-row items-center justify-between bg-gray-50/50">
+                            <div className="flex items-center gap-3">
+                                <DialogTitle className="text-xl font-semibold text-gray-800">Visualização da Estampa</DialogTitle>
+                                <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">{zoomLevel.toFixed(1)}x</span>
+                            </div>
+                            <div className="flex items-center gap-2 mr-8">
+                                {/* Download removido a pedido */}
+                            </div>
+                        </DialogHeader>
+
+                        <div
+                            ref={previewContainerRef}
+                            className={`p-6 bg-gray-50/30 flex justify-center items-center flex-1 overflow-auto min-h-[300px] transition-all select-none ${zoomLevel > 1 ? 'cursor-grab active:cursor-grabbing items-start justify-start' : 'cursor-zoom-in'}`}
+                            onClick={handlePreviewClick}
+                            onMouseDown={handleMouseDown}
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
+                            onMouseLeave={handleMouseUp}
+                        >
+                            {previewImage && (
+                                <img
+                                    src={previewImage}
+                                    style={zoomLevel === 1 ? {
+                                        pointerEvents: 'none',
+                                        maxHeight: '70vh',
+                                        maxWidth: '100%',
+                                        width: 'auto',
+                                        height: 'auto'
+                                    } : {
+                                        pointerEvents: 'none',
+                                        height: `${70 * zoomLevel}vh`,
+                                        maxWidth: 'none',
+                                        width: 'auto'
+                                    }}
+                                    alt="Visualização"
+                                    className={`object-contain rounded-md shadow-sm border border-gray-100 transition-all duration-75 ease-linear`}
+                                />
+                            )}
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
-        </div>
+        </div >
     );
 }
 

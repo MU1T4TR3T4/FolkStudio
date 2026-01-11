@@ -460,3 +460,42 @@ export async function submitApproval(token: string, status: 'approved' | 'reject
 
     return success;
 }
+
+/**
+ * Remove a stamp assignment from a client
+ */
+export async function removeClientStamp(id: string): Promise<boolean> {
+    let success = false;
+
+    // 1. Remove from Supabase
+    try {
+        const { error } = await supabase
+            .from('client_stamps')
+            .delete()
+            .eq('id', id);
+
+        if (!error) success = true;
+        else console.error('Error removing client stamp from DB:', error);
+    } catch (error) {
+        console.error('Error removing client stamp:', error);
+    }
+
+    // 2. Always try to remove from LocalStorage (cleanup)
+    try {
+        const saved = localStorage.getItem('folk_studio_client_stamps');
+        if (saved) {
+            const all: any[] = JSON.parse(saved);
+            const initialLength = all.length;
+            const filtered = all.filter(x => x.id !== id);
+
+            if (filtered.length !== initialLength) {
+                localStorage.setItem('folk_studio_client_stamps', JSON.stringify(filtered));
+                success = true; // Mark as success if we found and removed it locally
+            }
+        }
+    } catch (e) {
+        console.error('Error removing from localStorage:', e);
+    }
+
+    return success;
+}

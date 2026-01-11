@@ -5,11 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import {
     ArrowLeft, User, Mail, Phone, MapPin, FileText,
     ShoppingBag, Calendar, CheckCircle, Clock, Package,
-    Plus, Stamp, ExternalLink, Link as LinkIcon, Eye, Check, Copy, X, PenTool
+    Plus, Stamp, ExternalLink, Link as LinkIcon, Eye, Check, Copy, X, PenTool, Trash2, Download
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { getClientById, Client, getClientStamps, ClientStamp } from "@/lib/clients";
+import { getClientById, Client, getClientStamps, ClientStamp, removeClientStamp } from "@/lib/clients";
 import { getAllOrders, Order } from "@/lib/orders";
 import { getImage } from "@/lib/storage";
 import { toast, Toaster } from "sonner";
@@ -29,12 +29,11 @@ export default function ClientDetailsPage() {
     const [viewImage_url, setViewImage_url] = useState<string | null>(null);
     const [viewImage_designId, setViewImage_designId] = useState<string | null>(null);
 
-
-
     // Modal states
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
     const [selectedSignatureUrl, setSelectedSignatureUrl] = useState<string | null>(null);
+    const [stampToRemove, setStampToRemove] = useState<ClientStamp | null>(null); // State for deletion confirmation
 
     // Mock for stamp assignment (in real app, would open a modal to select stamp)
     // We will reuse the logic from Orders page but perhaps simpler, or just redirect to Studio/Orders with pre-selected client
@@ -164,6 +163,46 @@ export default function ClientDetailsPage() {
     const handleEditDesign = () => {
         if (!viewImage_designId) return;
         router.push(`/dashboard/studio?edit_design_id=${viewImage_designId}&client_id=${clientId}`);
+    };
+
+    const handleDownloadImage = async () => {
+        if (!viewImage_url) return;
+        try {
+            const response = await fetch(viewImage_url);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            // Extract filename or default
+            const filename = viewImage_url.split('/').pop() || 'estampa-folkstudio.png';
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast.success("Download iniciado!");
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao baixar imagem");
+        }
+    };
+
+    const handleRemoveStamp = async () => {
+        if (!stampToRemove) return;
+
+        const loadingToast = toast.loading("Removendo estampa...");
+        const success = await removeClientStamp(stampToRemove.id);
+
+        toast.dismiss(loadingToast);
+
+        if (success) {
+            toast.success("Estampa removida do cliente!");
+            // Update local state immediately for better UX
+            setClientStamps(prev => prev.filter(s => s.id !== stampToRemove.id));
+        } else {
+            toast.error("Erro ao remover estampa.");
+        }
+        setStampToRemove(null);
     };
 
 
@@ -467,6 +506,10 @@ export default function ClientDetailsPage() {
                                                     <Button size="sm" onClick={() => handleOrderFromStamp(item)} className="w-full bg-green-500 hover:bg-green-600 text-white border-0 shadow-lg font-medium tracking-wide h-8 relative justify-center">
                                                         <Package className="absolute left-3 h-4 w-4" /> Pedir
                                                     </Button>
+
+                                                    <Button size="sm" variant="destructive" onClick={() => setStampToRemove(item)} className="w-full bg-red-500 hover:bg-red-600 text-white border-0 h-8 relative justify-center">
+                                                        <Trash2 className="absolute left-3 h-4 w-4" /> Remover
+                                                    </Button>
                                                 </div>
                                             </div>
                                             <div className="p-3">
@@ -487,12 +530,18 @@ export default function ClientDetailsPage() {
                 <DialogContent className="max-w-4xl w-full p-0 overflow-hidden bg-white rounded-lg shadow-2xl border border-gray-200 flex flex-col max-h-[90vh]">
                     <DialogHeader className="px-6 py-4 border-b border-gray-100 flex flex-row items-center justify-between bg-gray-50/50">
                         <DialogTitle className="text-xl font-semibold text-gray-800">Visualização da Estampa</DialogTitle>
-                        {viewImage_designId && (
-                            <Button variant="outline" size="sm" onClick={handleEditDesign}>
-                                <FileText className="h-4 w-4 mr-2" />
-                                Editar Estampa
+                        <div className="flex items-center gap-2 mr-8">
+                            <Button variant="outline" size="sm" onClick={handleDownloadImage}>
+                                <Download className="h-4 w-4 mr-2" />
+                                Baixar
                             </Button>
-                        )}
+                            {viewImage_designId && (
+                                <Button variant="outline" size="sm" onClick={handleEditDesign}>
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    Editar Estampa
+                                </Button>
+                            )}
+                        </div>
                     </DialogHeader>
 
                     <div className="p-6 bg-gray-50/30 flex justify-center items-center flex-1 overflow-auto min-h-[300px]">
@@ -523,6 +572,25 @@ export default function ClientDetailsPage() {
                         ) : (
                             <p className="text-gray-500">Assinatura não disponível</p>
                         )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Remove Confirmation Dialog */}
+            <Dialog open={!!stampToRemove} onOpenChange={(open) => !open && setStampToRemove(null)}>
+                <DialogContent className="sm:max-w-[425px] bg-white text-gray-900">
+                    <DialogHeader>
+                        <DialogTitle>Remover estampa do cliente?</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p className="text-gray-600">
+                            Tem certeza que deseja remover esta estampa deste cliente?
+                            A estampa original não será apagada, apenas a associação com este cliente.
+                        </p>
+                    </div>
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setStampToRemove(null)}>Cancelar</Button>
+                        <Button variant="destructive" onClick={handleRemoveStamp}>Remover</Button>
                     </div>
                 </DialogContent>
             </Dialog>
