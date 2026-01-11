@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getImage } from "@/lib/storage";
 import { supabase, Design } from "@/lib/supabase";
 import { assignStampsToClient } from "@/lib/clients";
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Stamp {
     id: string;
@@ -42,15 +43,17 @@ function EstampasContent() {
     const isSelectionMode = !!clientId;
     const [selectedItems, setSelectedItems] = useState<{ id: string; type: 'stamp' | 'design' }[]>([]);
 
+    // Delete Confirmation State
+    const [deleteConfirmation, setDeleteConfirmation] = useState<{ isOpen: boolean; id: string | number; type: 'design' | 'model' | 'ai' | 'upload' } | null>(null);
+
     useEffect(() => {
         loadAllData();
         if (isSelectionMode) {
             // Reset selection on mount if needed
             setSelectedItems([]);
         }
-    }, [isSelectionMode]); // Removed clientName dependency to avoid double toast if not needed, kept loadAllData.
+    }, [isSelectionMode]);
 
-    /* Removed duplicate effect for toast */
     useEffect(() => {
         if (isSelectionMode && clientName) {
             toast.info(`Selecione ou crie um modelo para ${clientName}`, { duration: 5000 });
@@ -158,7 +161,12 @@ function EstampasContent() {
         }
     }
 
+    function RequestDeleteModel(id: string) {
+        setDeleteConfirmation({ isOpen: true, id, type: 'model' });
+    }
+
     async function handleDeleteModel(id: string) {
+        setDeleteConfirmation(null);
         try {
             // Try deleting from Supabase
             const { error } = await supabase
@@ -183,8 +191,12 @@ function EstampasContent() {
         }
     }
 
+    function RequestDeleteDesign(id: string) {
+        setDeleteConfirmation({ isOpen: true, id, type: 'design' });
+    }
+
     async function handleDeleteDesign(id: string) {
-        if (!confirm("Tem certeza que deseja deletar este design?")) return;
+        setDeleteConfirmation(null);
         try {
             // Try deleting from Supabase
             const { error } = await supabase
@@ -232,8 +244,12 @@ function EstampasContent() {
         }
     }
 
+    function RequestDeleteImage(index: number, type: "ai" | "upload") {
+        setDeleteConfirmation({ isOpen: true, id: index, type });
+    }
+
     function handleDeleteImage(index: number, type: "ai" | "upload") {
-        if (!confirm("Tem certeza que deseja deletar esta imagem?")) return;
+        setDeleteConfirmation(null);
         if (type === "ai") {
             const updated = generatedDesigns.filter((_, i) => i !== index);
             setGeneratedDesigns(updated);
@@ -369,11 +385,11 @@ function EstampasContent() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {designs.map((design) => (
                                     <div key={design.id} className={`bg-white rounded-xl border shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col relative ${isSelectionMode && selectedItems.some(i => i.id === design.id) ? 'border-blue-500' : 'border-gray-200'}`}>
-                                        <div className="bg-gray-100 p-4 relative">
+                                        <div className="bg-white p-0 relative aspect-[2/1]">
                                             <img
                                                 src={design.final_image_url || '/placeholder.png'}
                                                 alt={`Design ${design.product_type}`}
-                                                className="w-full aspect-square object-contain rounded"
+                                                className="w-full h-full object-contain"
                                             />
                                             {isSelectionMode && (
                                                 <div
@@ -420,7 +436,7 @@ function EstampasContent() {
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    handleDeleteDesign(design.id);
+                                                    RequestDeleteDesign(design.id);
                                                 }}
                                                 variant="ghost"
                                                 size="sm"
@@ -445,12 +461,12 @@ function EstampasContent() {
                                         <div className="grid grid-cols-2 gap-1 bg-gray-100 p-2 relative">
                                             <div className="bg-white rounded p-1">
                                                 <p className="text-xs text-gray-500 mb-1 text-center">Frente</p>
-                                                <img src={stamp.frontImageUrl} alt="Frente" className="w-full aspect-square object-contain" />
+                                                <img src={stamp.frontImageUrl} alt="Frente" className="w-full aspect-[2/1] object-contain" />
                                             </div>
                                             {stamp.backImageUrl && (
                                                 <div className="bg-white rounded p-1">
                                                     <p className="text-xs text-gray-500 mb-1 text-center">Costas</p>
-                                                    <img src={stamp.backImageUrl} alt="Costas" className="w-full aspect-square object-contain" />
+                                                    <img src={stamp.backImageUrl} alt="Costas" className="w-full aspect-[2/1] object-contain" />
                                                 </div>
                                             )}
                                             {isSelectionMode && (
@@ -482,7 +498,7 @@ function EstampasContent() {
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    handleDeleteModel(stamp.id);
+                                                    RequestDeleteModel(stamp.id);
                                                 }}
                                                 variant="ghost"
                                                 size="sm"
@@ -496,6 +512,34 @@ function EstampasContent() {
                             </div>
                         )
                     )}
+
+                    {/* Delete Confirmation Dialog */}
+                    {deleteConfirmation && (
+                        <Dialog open={deleteConfirmation.isOpen} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
+                            <DialogContent className="sm:max-w-md bg-white">
+                                <DialogHeader>
+                                    <DialogTitle>Confirmar Exclusão</DialogTitle>
+                                </DialogHeader>
+                                <div className="py-4 text-gray-500">
+                                    Tem certeza que deseja excluir este item? Esta ação não pode ser desfeita.
+                                </div>
+                                <div className="flex justify-end gap-3">
+                                    <Button variant="outline" onClick={() => setDeleteConfirmation(null)}>Cancelar</Button>
+                                    <Button
+                                        variant="destructive"
+                                        onClick={() => {
+                                            if (deleteConfirmation.type === 'design') handleDeleteDesign(deleteConfirmation.id as string);
+                                            else if (deleteConfirmation.type === 'model') handleDeleteModel(deleteConfirmation.id as string);
+                                            else handleDeleteImage(deleteConfirmation.id as number, deleteConfirmation.type as "ai" | "upload");
+                                        }}
+                                    >
+                                        Excluir
+                                    </Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    )}
+
                     {/* Tab: Designs Gerados */}
                     {activeTab === "ai" && (
                         generatedDesigns.length === 0 ? (
@@ -509,7 +553,7 @@ function EstampasContent() {
                                             <Button onClick={() => handleDownload(img, `design-ia-${index}`)} size="icon" variant="secondary" className="h-8 w-8">
                                                 <Download className="h-4 w-4" />
                                             </Button>
-                                            <Button onClick={() => handleDeleteImage(index, "ai")} size="icon" variant="destructive" className="h-8 w-8">
+                                            <Button onClick={() => RequestDeleteImage(index, "ai")} size="icon" variant="destructive" className="h-8 w-8">
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
@@ -531,7 +575,7 @@ function EstampasContent() {
                                             <Button onClick={() => handleDownload(img, `upload-${index}`)} size="icon" variant="secondary" className="h-8 w-8">
                                                 <Download className="h-4 w-4" />
                                             </Button>
-                                            <Button onClick={() => handleDeleteImage(index, "upload")} size="icon" variant="destructive" className="h-8 w-8">
+                                            <Button onClick={() => RequestDeleteImage(index, "upload")} size="icon" variant="destructive" className="h-8 w-8">
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
@@ -603,6 +647,14 @@ function EstampasContent() {
                                 className="w-full mt-4"
                             >
                                 <Download className="h-4 w-4 mr-2" /> Baixar Imagem
+                            </Button>
+
+                            <Button
+                                onClick={() => router.push(`/dashboard/studio?edit_design_id=${viewingDesign.id}`)}
+                                variant="outline"
+                                className="w-full mt-2"
+                            >
+                                <Palette className="h-4 w-4 mr-2" /> Editar Design
                             </Button>
                         </div>
                         <div className="bg-blue-50 rounded-lg p-4 mb-6">
