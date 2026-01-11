@@ -4,10 +4,12 @@ import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Upload, ShoppingBag, Package, CheckCircle, Clock, Trash2, Eye, User, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { openDB } from "idb";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast, Toaster } from "sonner";
 import { saveImage, getImage } from "@/lib/storage";
 import { getAllOrders, createOrder, deleteOrder as deleteOrderFromDB } from "@/lib/orders";
+import { supabase } from "@/lib/supabase";
 
 interface Order {
     id: string;
@@ -457,11 +459,88 @@ function NewOrderForm({ onClose, onSuccess, initialData, preselectedClient }: { 
     }, [previewImage]);
 
     useEffect(() => {
-        const stamps = localStorage.getItem("folk_studio_stamps");
-        if (stamps) {
-            setSavedStamps(JSON.parse(stamps));
-        }
-    }, []);
+        const loadStamps = async () => {
+            const stampsJson = localStorage.getItem("folk_studio_stamps");
+
+            try {
+                // 1. Try fetching from Supabase (Source of Truth)
+                // We need both 'stamps' (raw images) and 'designs' (mockups)
+                const [stampsResponse, designsResponse] = await Promise.all([
+                    supabase.from('stamps').select('*').order('created_at', { ascending: false }),
+                    supabase.from('designs').select('*').order('created_at', { ascending: false })
+                ]);
+
+                let combinedStamps: any[] = [];
+
+                if (!stampsResponse.error && stampsResponse.data) {
+                    const mappedStamps = stampsResponse.data.map((s: any) => ({
+                        id: s.id,
+                        name: s.name,
+                        frontImageUrl: s.image_url,
+                        createdAt: s.created_at,
+                        type: 'stamp'
+                    }));
+                    combinedStamps = [...combinedStamps, ...mappedStamps];
+                }
+
+                if (!designsResponse.error && designsResponse.data) {
+                    const mappedDesigns = designsResponse.data.map((d: any) => ({
+                        id: d.id,
+                        name: `${d.product_type} - ${d.color}`,
+                        frontImageUrl: d.final_image_url || d.mockup_image, // Prefer final render
+                        createdAt: d.created_at,
+                        type: 'design'
+                    }));
+                    combinedStamps = [...combinedStamps, ...mappedDesigns];
+                }
+
+                if (combinedStamps.length > 0) {
+                    // Sort combined list descending
+                    combinedStamps.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                    setSavedStamps(combinedStamps);
+                    return; // Loaded remote data
+                }
+            } catch (err) {
+                console.error("Supabase fetch failed", err);
+            }
+
+            if (stampsJson) {
+                try {
+                    let stamps = JSON.parse(stampsJson);
+
+                    // Sort descending by date (newest first)
+                    stamps.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+                    // Resolve IndexedDB images if needed
+                    const resolvedStamps = await Promise.all(stamps.map(async (stamp: any) => {
+                        let frontUrl = stamp.frontImageUrl;
+
+                        // Resolve IDB url for front
+                        if (frontUrl && frontUrl.startsWith('idb:')) {
+                            const key = frontUrl.replace('idb:', '');
+                            try {
+                                const base64 = await getImage(key);
+                                if (base64) {
+                                    frontUrl = base64;
+                                }
+                            } catch (e) {
+                                console.error("Error loading image from IDB", e);
+                            }
+                        }
+
+                        return { ...stamp, frontImageUrl: frontUrl };
+                    }));
+
+                    setSavedStamps(resolvedStamps);
+                } catch (e) {
+                    console.error("Error parsing stamps", e);
+                    setSavedStamps([]);
+                }
+            }
+        };
+
+        loadStamps();
+    }, [showStampSelector]);
 
 
     // Carregar artes originais do initialData (quando vem de uma estampa)
