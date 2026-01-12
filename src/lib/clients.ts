@@ -241,7 +241,8 @@ export async function assignStampsToClient(clientId: string, items: { id: string
             stamp_id: item.type === 'stamp' ? item.id : null,
             design_id: item.type === 'design' ? item.id : null,
             type: item.type,
-            approval_token: crypto.randomUUID() // Generate unique token for approval
+            approval_token: crypto.randomUUID(), // Generate unique token for approval
+            approval_status: 'pending'
         }));
 
         const { error } = await supabase
