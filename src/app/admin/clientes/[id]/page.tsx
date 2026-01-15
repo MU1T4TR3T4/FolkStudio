@@ -254,10 +254,10 @@ export default function ClientDetailsPage({ params }: { params: { id: string } }
                                         alt={stamp.stamp.name || "Estampa"}
                                         className="w-full h-32 object-cover rounded-lg mb-2"
                                     />
-                                ) : stamp.design?.preview_url ? (
+                                ) : stamp.design?.final_image_url ? (
                                     <img
-                                        src={stamp.design.preview_url}
-                                        alt={stamp.design.name || "Design"}
+                                        src={stamp.design.final_image_url}
+                                        alt={stamp.design.product_type ? `${stamp.design.product_type} - ${stamp.design.color}` : "Design"}
                                         className="w-full h-32 object-cover rounded-lg mb-2"
                                     />
                                 ) : (
@@ -266,7 +266,7 @@ export default function ClientDetailsPage({ params }: { params: { id: string } }
                                     </div>
                                 )}
                                 <p className="text-xs font-medium text-gray-900 truncate">
-                                    {stamp.stamp?.name || stamp.design?.name || "Sem nome"}
+                                    {stamp.stamp?.name || (stamp.design ? `${stamp.design.product_type} - ${stamp.design.color}` : "Sem nome")}
                                 </p>
                                 <p className="text-xs text-gray-500">
                                     {stamp.approval_status === 'approved' ? '✓ Aprovado' :
