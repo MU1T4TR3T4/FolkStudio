@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, User, Mail, Phone, Shield, Calendar, CheckCircle, Clock, ShoppingBag } from "lucide-react";
+import { ArrowLeft, User as UserIcon, Mail, Phone, Shield, Calendar, CheckCircle, Clock, ShoppingBag } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { getUserById, User } from "@/lib/auth";
 import { getOrdersByUser, getActivityLogsByUser } from "@/lib/orders";
