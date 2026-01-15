@@ -17,10 +17,23 @@ interface Client {
     createdAt: string;
     totalOrders: number;
 }
-// ... (imports remain)
+
 
 export default function AdminClientesPage() {
-    // ...
+    const router = useRouter();
+    const [clients, setClients] = useState<Client[]>([]);
+    const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterBy, setFilterBy] = useState<"all" | "recent" | "active">("all");
+
+    useEffect(() => {
+        loadClients();
+    }, []);
+
+    useEffect(() => {
+        filterClients();
+    }, [searchTerm, filterBy, clients]);
+
     async function loadClients() {
         try {
             // Buscar todos os clientes do Supabase E localStorage
@@ -44,8 +57,6 @@ export default function AdminClientesPage() {
 
             setClients(clientsWithOrders);
         } catch (error) {
-            //...
-        } catch (error) {
             console.error("Erro ao carregar clientes:", error);
             toast.error("Erro ao carregar clientes");
         }
@@ -59,8 +70,8 @@ export default function AdminClientesPage() {
             const term = searchTerm.toLowerCase();
             result = result.filter(client =>
                 client.name.toLowerCase().includes(term) ||
-                client.email.toLowerCase().includes(term) ||
-                client.phone.includes(term)
+                (client.email || "").toLowerCase().includes(term) ||
+                (client.phone || "").includes(term)
             );
         }
 
