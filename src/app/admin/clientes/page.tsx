@@ -10,29 +10,17 @@ import { getClients } from "@/lib/clients";
 interface Client {
     id: string;
     name: string;
-    email: string;
-    phone: string;
+    email?: string;
+    phone?: string;
     address?: string;
     observations?: string;
     createdAt: string;
     totalOrders: number;
 }
+// ... (imports remain)
 
 export default function AdminClientesPage() {
-    const router = useRouter();
-    const [clients, setClients] = useState<Client[]>([]);
-    const [filteredClients, setFilteredClients] = useState<Client[]>([]);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [filterBy, setFilterBy] = useState<"all" | "recent" | "active">("all");
-
-    useEffect(() => {
-        loadClients();
-    }, []);
-
-    useEffect(() => {
-        filterClients();
-    }, [searchTerm, filterBy, clients]);
-
+    // ...
     async function loadClients() {
         try {
             // Buscar todos os clientes do Supabase E localStorage
@@ -42,12 +30,21 @@ export default function AdminClientesPage() {
             const savedOrders = localStorage.getItem("folk_studio_orders");
             const orders = savedOrders ? JSON.parse(savedOrders) : [];
 
-            const clientsWithOrders = allClients.map(client => ({
-                ...client,
+            // Map and safely handle potentially missing properties
+            const clientsWithOrders: Client[] = allClients.map(client => ({
+                id: client.id,
+                name: client.name,
+                email: client.email || "",
+                phone: client.phone || "",
+                address: `${client.address_city || ''} ${client.address_state || ''}`.trim(),
+                observations: client.notes,
+                createdAt: client.created_at || new Date().toISOString(),
                 totalOrders: orders.filter((o: any) => o.clientName === client.name).length
             }));
 
             setClients(clientsWithOrders);
+        } catch (error) {
+            //...
         } catch (error) {
             console.error("Erro ao carregar clientes:", error);
             toast.error("Erro ao carregar clientes");
