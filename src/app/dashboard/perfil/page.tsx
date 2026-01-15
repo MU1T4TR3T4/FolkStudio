@@ -51,7 +51,7 @@ export default function PerfilPage() {
             }
 
             setUser(result.user);
-            setStatistics(result.statistics);
+            setStatistics(result.statistics || null);
             setFormData({
                 full_name: result.user.full_name || "",
                 email: result.user.email || "",
