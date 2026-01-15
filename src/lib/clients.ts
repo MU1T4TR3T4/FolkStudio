@@ -23,14 +23,26 @@ export interface Client {
 
 /**
  * Get all clients (sorted by newest first)
+ * Vendors only see their own clients, admins/team see all
  */
 export async function getClients(): Promise<Client[]> {
     let dbClients: Client[] = [];
     try {
-        const { data, error } = await supabase
+        // Get current user from localStorage (auth system)
+        const userStr = localStorage.getItem('folk_user');
+        const currentUser = userStr ? JSON.parse(userStr) : null;
+
+        let query = supabase
             .from('clients')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .select('*');
+
+        // Filter by vendor if user is vendedor
+        if (currentUser && currentUser.role === 'vendedor') {
+            query = query.eq('created_by_user_id', currentUser.id);
+        }
+        // Admin and equipe see all clients
+
+        const { data, error } = await query.order('created_at', { ascending: false });
 
         if (error) throw error;
         if (data) dbClients = data;

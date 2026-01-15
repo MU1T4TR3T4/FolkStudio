@@ -14,9 +14,10 @@ interface MockupModalProps {
         image: string;
     } | null;
     productType: string;
+    basePath?: string;
 }
 
-export default function MockupModal({ isOpen, onClose, mockup, productType }: MockupModalProps) {
+export default function MockupModal({ isOpen, onClose, mockup, productType, basePath }: MockupModalProps) {
     // Close modal on ESC key press
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
@@ -96,7 +97,7 @@ export default function MockupModal({ isOpen, onClose, mockup, productType }: Mo
                         {/* Action Buttons */}
                         <div className="space-y-3 mt-6">
                             <Link
-                                href={`/dashboard/studio?mockup=${encodeURIComponent(mockup.image)}&productType=${encodeURIComponent(productType)}&color=${encodeURIComponent(mockup.name)}`}
+                                href={`${basePath || '/dashboard/studio'}?mockup=${encodeURIComponent(mockup.image)}&productType=${encodeURIComponent(productType)}&color=${encodeURIComponent(mockup.name)}`}
                                 className="block"
                             >
                                 <Button className="w-full bg-[#7D4CDB] hover:bg-[#6b3bb5] text-white shadow-sm">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { Trash2, Download, Plus, Image as ImageIcon, Wand2, Shirt, Eye, ShoppingBag, X, Palette, Check } from "lucide-react";
+import { Trash2, Download, Plus, Image as ImageIcon, Wand2, Shirt, Eye, ShoppingBag, X, Palette, Check, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,6 +9,7 @@ import { getImage } from "@/lib/storage";
 import { supabase, Design } from "@/lib/supabase";
 import { assignStampsToClient } from "@/lib/clients";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getCurrentUser } from "@/lib/auth";
 
 interface Stamp {
     id: string;
@@ -24,7 +25,7 @@ interface Stamp {
     designBack?: { x: number; y: number; width: number; height: number; rotation: number } | null;
 }
 
-function EstampasContent() {
+export function EstampasContent({ filterUser }: { filterUser?: string }) {
     const [activeTab, setActiveTab] = useState<"designs" | "models" | "ai" | "uploads">("designs");
     const [designs, setDesigns] = useState<Design[]>([]);
     const [stamps, setStamps] = useState<Stamp[]>([]);
@@ -93,21 +94,46 @@ function EstampasContent() {
 
     async function loadAllData() {
         try {
+            // Get current user for filtering
+            const currentUser = getCurrentUser();
+            if (!currentUser) {
+                toast.error("Usuário não autenticado");
+                router.push('/login');
+                return;
+            }
+
             // Load designs from Supabase
-            const { data: designsData, error: designsError } = await supabase
+            let queryDesigns = supabase
                 .from('designs')
                 .select('*')
                 .order('created_at', { ascending: false });
+
+            // Filter by vendor if not admin
+            if (currentUser.role === 'vendedor') {
+                queryDesigns = queryDesigns.eq('created_by_user_id', currentUser.id);
+            } else if (filterUser) {
+                queryDesigns = queryDesigns.eq('created_by_user_id', filterUser);
+            }
+
+            const { data: designsData, error: designsError } = await queryDesigns;
 
             if (!designsError && designsData) {
                 setDesigns(designsData as Design[]);
             }
 
-            // Try loading stamps from Supabase
-            const { data: stampsData, error: stampsError } = await supabase
+            let queryStamps = supabase
                 .from('stamps')
                 .select('*')
                 .order('created_at', { ascending: false });
+
+            // Filter by vendor if not admin
+            if (currentUser.role === 'vendedor') {
+                queryStamps = queryStamps.eq('created_by_user_id', currentUser.id);
+            } else if (filterUser) {
+                queryStamps = queryStamps.eq('created_by_user_id', filterUser);
+            }
+
+            const { data: stampsData, error: stampsError } = await queryStamps;
 
             if (!stampsError && stampsData) {
                 // Convert Supabase stamps to local format
@@ -161,6 +187,49 @@ function EstampasContent() {
         } catch (error) {
             console.error(error);
             toast.error("Erro ao carregar dados");
+        } finally {
+            setLoading(false);
+        }
+
+    }
+
+    async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        if (!e.target.files || e.target.files.length === 0) return;
+        const file = e.target.files[0];
+
+        try {
+            setLoading(true);
+
+            // Get current user
+            const currentUser = getCurrentUser();
+            if (!currentUser) {
+                toast.error("Usuário não autenticado");
+                return;
+            }
+
+            const fileName = `uploads/${Date.now()}_${file.name}`;
+            const { error: uploadError } = await supabase.storage.from('designs').upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage.from('designs').getPublicUrl(fileName);
+
+            // Save to stamps table with created_by_user_id
+            const { error: dbError } = await supabase.from('stamps').insert({
+                name: file.name,
+                image_url: publicUrl,
+                type: 'uploaded',
+                created_by_user_id: currentUser.id, // Save vendor ID
+                is_public: false
+            });
+
+            if (dbError) throw dbError;
+
+            toast.success("Upload realizado com sucesso!");
+            loadAllData(); // Reload to show new upload
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao fazer upload");
         } finally {
             setLoading(false);
         }
@@ -367,13 +436,18 @@ function EstampasContent() {
                 <button onClick={() => setActiveTab("designs")} className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "designs" ? "border-purple-600 text-purple-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}>
                     <Palette className="h-4 w-4" /> Designs Salvos ({designs.length})
                 </button>
-                <button onClick={() => setActiveTab("models")} className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "models" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}>
-                    <Shirt className="h-4 w-4" /> Modelos Criados ({stamps.length})
-                </button>
-                <button onClick={() => setActiveTab("ai")} className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "ai" ? "border-purple-600 text-purple-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}>
-                    <Wand2 className="h-4 w-4" /> Designs Gerados ({generatedDesigns.length})
-                </button>
-                <button onClick={() => setActiveTab("uploads")} className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "uploads" ? "border-green-600 text-green-600" : "border-transparent text-gray-5 00 hover:text-gray-700 hover:border-gray-300"}`}>
+                {/* Hiding tabs for workspace user or globally as requested */}
+                {!filterUser && (
+                    <>
+                        <button onClick={() => setActiveTab("models")} className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "models" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}>
+                            <Shirt className="h-4 w-4" /> Modelos Criados ({stamps.length})
+                        </button>
+                        <button onClick={() => setActiveTab("ai")} className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "ai" ? "border-purple-600 text-purple-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}>
+                            <Wand2 className="h-4 w-4" /> Designs Gerados ({generatedDesigns.length})
+                        </button>
+                    </>
+                )}
+                <button onClick={() => setActiveTab("uploads")} className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "uploads" ? "border-green-600 text-green-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}>
                     <ImageIcon className="h-4 w-4" /> Uploads ({uploads.length})
                 </button>
             </div>
@@ -569,123 +643,133 @@ function EstampasContent() {
                     )}
                     {/* Tab: Uploads */}
                     {activeTab === "uploads" && (
-                        uploads.length === 0 ? (
-                            <EmptyState message="Você ainda não fez upload de nenhuma imagem." />
-                        ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                {uploads.map((img, index) => (
-                                    <div key={index} className="group relative bg-white rounded-lg border border-gray-200 overflow-hidden aspect-square">
-                                        <img src={img} alt={`Upload ${index}`} className="w-full h-full object-contain p-2" />
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                            <Button onClick={() => handleDownload(img, `upload-${index}`)} size="icon" variant="secondary" className="h-8 w-8">
-                                                <Download className="h-4 w-4" />
-                                            </Button>
-                                            <Button onClick={() => RequestDeleteImage(index, "upload")} size="icon" variant="destructive" className="h-8 w-8">
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
+                        <div>
+                            <div className="mb-6 flex justify-end">
+                                <label className="cursor-pointer bg-[#7D4CDB] hover:bg-[#6b3bb5] text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors">
+                                    <Upload className="h-4 w-4" />
+                                    Fazer Upload
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
+                                </label>
                             </div>
-                        )
-                    )}
-                </div>
-            )}
-            {/* Modal de Visualização */}
-            {viewingStamp && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setViewingStamp(null)}>
-                    <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 relative" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => setViewingStamp(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors">
-                            <X className="h-6 w-6 text-gray-500" />
-                        </button>
-                        <h2 className="text-2xl font-bold mb-6 pr-12">{viewingStamp.name}</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                                <h3 className="text-center font-medium text-gray-500 mb-4">Frente</h3>
-                                <img src={viewingStamp.frontImageUrl} alt="Frente" className="w-full h-auto object-contain rounded-lg shadow-sm" />
-                                <Button onClick={() => handleDownload(viewingStamp.frontImageUrl, `${viewingStamp.name}-frente`)} variant="outline" className="w-full mt-4">
-                                    <Download className="h-4 w-4 mr-2" /> Baixar Imagem
-                                </Button>
-                            </div>
-                            {viewingStamp.backImageUrl ? (
-                                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                                    <h3 className="text-center font-medium text-gray-500 mb-4">Costas</h3>
-                                    <img src={viewingStamp.backImageUrl} alt="Costas" className="w-full h-auto object-contain rounded-lg shadow-sm" />
-                                    <Button onClick={() => handleDownload(viewingStamp.backImageUrl!, `${viewingStamp.name}-costas`)} variant="outline" className="w-full mt-4">
-                                        <Download className="h-4 w-4 mr-2" /> Baixar Imagem
-                                    </Button>
-                                </div>
+
+                            {uploads.length === 0 ? (
+                                <EmptyState message="Você ainda não fez upload de nenhuma imagem." />
                             ) : (
-                                <div className="flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-300 text-gray-400">
-                                    <p>Sem verso</p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                    {uploads.map((img, index) => (
+                                        <div key={index} className="group relative bg-white rounded-lg border border-gray-200 overflow-hidden aspect-square">
+                                            <img src={img} alt={`Upload ${index}`} className="w-full h-full object-contain p-2" />
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                <Button onClick={() => handleDownload(img, `upload-${index}`)} size="icon" variant="secondary" className="h-8 w-8">
+                                                    <Download className="h-4 w-4" />
+                                                </Button>
+                                                <Button onClick={() => RequestDeleteImage(index, "upload")} size="icon" variant="destructive" className="h-8 w-8">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
-                        <div className="mt-8 flex justify-end gap-4 pt-6 border-t border-gray-100">
-                            <Button onClick={() => setViewingStamp(null)} variant="outline">Fechar</Button>
-                            <Button onClick={() => { handleStartOrder(viewingStamp); setViewingStamp(null); }} className="bg-green-600 hover:bg-green-700 text-white px-8">
-                                <ShoppingBag className="h-4 w-4 mr-2" /> Iniciar Pedido com este Modelo
-                            </Button>
+                    )}
+                    {/* Modal de Visualização */}
+                    {viewingStamp && (
+                        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setViewingStamp(null)}>
+                            <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 relative" onClick={(e) => e.stopPropagation()}>
+                                <button onClick={() => setViewingStamp(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                                    <X className="h-6 w-6 text-gray-500" />
+                                </button>
+                                <h2 className="text-2xl font-bold mb-6 pr-12">{viewingStamp.name}</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                        <h3 className="text-center font-medium text-gray-500 mb-4">Frente</h3>
+                                        <img src={viewingStamp.frontImageUrl} alt="Frente" className="w-full h-auto object-contain rounded-lg shadow-sm" />
+                                        <Button onClick={() => handleDownload(viewingStamp.frontImageUrl, `${viewingStamp.name}-frente`)} variant="outline" className="w-full mt-4">
+                                            <Download className="h-4 w-4 mr-2" /> Baixar Imagem
+                                        </Button>
+                                    </div>
+                                    {viewingStamp.backImageUrl ? (
+                                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                            <h3 className="text-center font-medium text-gray-500 mb-4">Costas</h3>
+                                            <img src={viewingStamp.backImageUrl} alt="Costas" className="w-full h-auto object-contain rounded-lg shadow-sm" />
+                                            <Button onClick={() => handleDownload(viewingStamp.backImageUrl!, `${viewingStamp.name}-costas`)} variant="outline" className="w-full mt-4">
+                                                <Download className="h-4 w-4 mr-2" /> Baixar Imagem
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-300 text-gray-400">
+                                            <p>Sem verso</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="mt-8 flex justify-end gap-4 pt-6 border-t border-gray-100">
+                                    <Button onClick={() => setViewingStamp(null)} variant="outline">Fechar</Button>
+                                    <Button onClick={() => { handleStartOrder(viewingStamp); setViewingStamp(null); }} className="bg-green-600 hover:bg-green-700 text-white px-8">
+                                        <ShoppingBag className="h-4 w-4 mr-2" /> Iniciar Pedido com este Modelo
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            )}
-            {/* Modal de Visualização de Design */}
-            {viewingDesign && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setViewingDesign(null)}>
-                    <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 relative" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => setViewingDesign(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors">
-                            <X className="h-6 w-6 text-gray-500" />
-                        </button>
-                        <h2 className="text-2xl font-bold mb-2 pr-12 capitalize">{viewingDesign.product_type} - {viewingDesign.color}</h2>
-                        <p className="text-sm text-gray-500 mb-6">{viewingDesign.elements.length} elemento(s) | {new Date(viewingDesign.created_at).toLocaleDateString("pt-BR")}</p>
-                        <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 mb-6">
-                            <h3 className="text-center font-medium text-gray-500 mb-4">Preview do Design</h3>
-                            <img
-                                src={viewingDesign.final_image_url || '/placeholder.png'}
-                                alt="Design Preview"
-                                className="w-full h-auto object-contain rounded-lg shadow-sm max-h-[500px]"
-                            />
-                            <Button
-                                onClick={() => handleDownload(viewingDesign.final_image_url || '', `design-${viewingDesign.product_type}-${viewingDesign.color}`)}
-                                variant="outline"
-                                className="w-full mt-4"
-                            >
-                                <Download className="h-4 w-4 mr-2" /> Baixar Imagem
-                            </Button>
+                    )}
+                    {/* Modal de Visualização de Design */}
+                    {viewingDesign && (
+                        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setViewingDesign(null)}>
+                            <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 relative" onClick={(e) => e.stopPropagation()}>
+                                <button onClick={() => setViewingDesign(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                                    <X className="h-6 w-6 text-gray-500" />
+                                </button>
+                                <h2 className="text-2xl font-bold mb-2 pr-12 capitalize">{viewingDesign.product_type} - {viewingDesign.color}</h2>
+                                <p className="text-sm text-gray-500 mb-6">{viewingDesign.elements.length} elemento(s) | {new Date(viewingDesign.created_at).toLocaleDateString("pt-BR")}</p>
+                                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 mb-6">
+                                    <h3 className="text-center font-medium text-gray-500 mb-4">Preview do Design</h3>
+                                    <img
+                                        src={viewingDesign.final_image_url || '/placeholder.png'}
+                                        alt="Design Preview"
+                                        className="w-full h-auto object-contain rounded-lg shadow-sm max-h-[500px]"
+                                    />
+                                    <Button
+                                        onClick={() => handleDownload(viewingDesign.final_image_url || '', `design-${viewingDesign.product_type}-${viewingDesign.color}`)}
+                                        variant="outline"
+                                        className="w-full mt-4"
+                                    >
+                                        <Download className="h-4 w-4 mr-2" /> Baixar Imagem
+                                    </Button>
 
-                            <Button
-                                onClick={() => router.push(`/dashboard/studio?edit_design_id=${viewingDesign.id}`)}
-                                variant="outline"
-                                className="w-full mt-2"
-                            >
-                                <Palette className="h-4 w-4 mr-2" /> Editar Design
-                            </Button>
+                                    <Button
+                                        onClick={() => router.push(`/dashboard/studio?edit_design_id=${viewingDesign.id}`)}
+                                        variant="outline"
+                                        className="w-full mt-2"
+                                    >
+                                        <Palette className="h-4 w-4 mr-2" /> Editar Design
+                                    </Button>
+                                </div>
+                                <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                                    <h3 className="font-semibold text-blue-900 mb-2">Elementos do Design:</h3>
+                                    <ul className="space-y-1 text-sm text-blue-800">
+                                        {viewingDesign.elements.map((el, idx) => (
+                                            <li key={idx} className="flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                                                {el.type === "text" ? `Texto: "${el.content}"` : "Imagem"}
+                                                <span className="text-xs text-blue-600">
+                                                    ({Math.round(el.width)}x{Math.round(el.height)}px)
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <div className="flex justify-end gap-4 pt-6 border-t border-gray-100">
+                                    <Button onClick={() => setViewingDesign(null)} variant="outline">Fechar</Button>
+                                    <Button
+                                        onClick={() => { handleStartOrderFromDesign(viewingDesign); setViewingDesign(null); }}
+                                        className="bg-green-600 hover:bg-green-700 text-white px-8"
+                                    >
+                                        <ShoppingBag className="h-4 w-4 mr-2" /> Iniciar Pedido com este Design
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
-                        <div className="bg-blue-50 rounded-lg p-4 mb-6">
-                            <h3 className="font-semibold text-blue-900 mb-2">Elementos do Design:</h3>
-                            <ul className="space-y-1 text-sm text-blue-800">
-                                {viewingDesign.elements.map((el, idx) => (
-                                    <li key={idx} className="flex items-center gap-2">
-                                        <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
-                                        {el.type === "text" ? `Texto: "${el.content}"` : "Imagem"}
-                                        <span className="text-xs text-blue-600">
-                                            ({Math.round(el.width)}x{Math.round(el.height)}px)
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                        <div className="flex justify-end gap-4 pt-6 border-t border-gray-100">
-                            <Button onClick={() => setViewingDesign(null)} variant="outline">Fechar</Button>
-                            <Button
-                                onClick={() => { handleStartOrderFromDesign(viewingDesign); setViewingDesign(null); }}
-                                className="bg-green-600 hover:bg-green-700 text-white px-8"
-                            >
-                                <ShoppingBag className="h-4 w-4 mr-2" /> Iniciar Pedido com este Design
-                            </Button>
-                        </div>
-                    </div>
+                    )}
                 </div>
             )}
         </div>

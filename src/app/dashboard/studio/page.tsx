@@ -54,7 +54,7 @@ const FONTS = [
 ];
 
 // Internal component that uses useSearchParams
-function StudioContent() {
+export function StudioContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -556,10 +556,14 @@ function StudioContent() {
             if (uploadError) { console.error('Upload error:', uploadError); toast.error("Erro ao fazer upload da imagem."); return; }
             const { data: { publicUrl } } = supabase.storage.from('designs').getPublicUrl(fileName);
 
+            // Get workspace user if available
+            const workspaceUser = localStorage.getItem("folk_employee_user");
+
             if (editDesignId) {
                 const { error } = await supabase.from('designs').update({
                     mockup_image: mockupImage, product_type: productType, color: color,
                     elements: elements, final_image_url: publicUrl,
+                    created_by_user: workspaceUser || 'admin' // Default to admin for dashboard
                 }).eq('id', editDesignId);
                 if (error) throw error;
                 toast.success("Design atualizado com sucesso!");
@@ -567,6 +571,7 @@ function StudioContent() {
                 const { error } = await supabase.from('designs').insert({
                     mockup_image: mockupImage, product_type: productType, color: color,
                     elements: elements, final_image_url: publicUrl,
+                    created_by_user: workspaceUser || 'admin'
                 });
                 if (error) throw error;
                 toast.success("Design salvo com sucesso!");

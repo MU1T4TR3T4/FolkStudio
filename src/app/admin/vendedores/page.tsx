@@ -2,68 +2,69 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Filter, Plus, Users, Mail, Phone, Calendar } from "lucide-react";
+import { Search, Filter, Plus, BadgeDollarSign, Mail, Phone, Calendar, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
-import { getClients } from "@/lib/clients";
+import { supabase } from "@/lib/supabase";
+import { User } from "@/lib/auth";
 
-interface Client {
+interface Vendedor {
     id: string;
-    name: string;
+    full_name: string;
     email: string;
     phone: string;
-    address?: string;
-    observations?: string;
-    createdAt: string;
-    totalOrders: number;
+    commission: number;
+    is_active: boolean;
+    created_at: string;
+    avatar_url?: string;
 }
 
-export default function AdminClientesPage() {
+export default function AdminVendedoresPage() {
     const router = useRouter();
-    const [clients, setClients] = useState<Client[]>([]);
-    const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+    const [vendedores, setVendedores] = useState<Vendedor[]>([]);
+    const [filteredVendedores, setFilteredVendedores] = useState<Vendedor[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterBy, setFilterBy] = useState<"all" | "recent" | "active">("all");
 
     useEffect(() => {
-        loadClients();
+        loadVendedores();
     }, []);
 
     useEffect(() => {
-        filterClients();
-    }, [searchTerm, filterBy, clients]);
+        filterVendedores();
+    }, [searchTerm, filterBy, vendedores]);
 
-    async function loadClients() {
+    async function loadVendedores() {
         try {
-            // Buscar todos os clientes do Supabase E localStorage
-            const allClients = await getClients();
+            const { data, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('role', 'vendedor')
+                .order('created_at', { ascending: false });
 
-            // Calcular total de pedidos para cada cliente
-            const savedOrders = localStorage.getItem("folk_studio_orders");
-            const orders = savedOrders ? JSON.parse(savedOrders) : [];
+            if (error) {
+                console.error("Erro ao carregar vendedores:", error);
+                toast.error("Erro ao carregar vendedores");
+                return;
+            }
 
-            const clientsWithOrders = allClients.map(client => ({
-                ...client,
-                totalOrders: orders.filter((o: any) => o.clientName === client.name).length
-            }));
-
-            setClients(clientsWithOrders);
+            setVendedores(data || []);
         } catch (error) {
-            console.error("Erro ao carregar clientes:", error);
-            toast.error("Erro ao carregar clientes");
+            console.error("Erro ao carregar vendedores:", error);
+            toast.error("Erro ao carregar vendedores");
         }
     }
 
-    function filterClients() {
-        let result = [...clients];
+    function filterVendedores() {
+        let result = [...vendedores];
 
         // Filtro por busca
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
-            result = result.filter(client =>
-                client.name.toLowerCase().includes(term) ||
-                client.email.toLowerCase().includes(term) ||
-                client.phone.includes(term)
+            result = result.filter(vendedor =>
+                vendedor.full_name.toLowerCase().includes(term) ||
+                vendedor.email.toLowerCase().includes(term) ||
+                (vendedor.phone && vendedor.phone.includes(term))
             );
         }
 
@@ -71,24 +72,31 @@ export default function AdminClientesPage() {
         if (filterBy === "recent") {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            result = result.filter(client => new Date(client.createdAt) >= thirtyDaysAgo);
+            result = result.filter(vendedor => new Date(vendedor.created_at) >= thirtyDaysAgo);
         } else if (filterBy === "active") {
-            result = result.filter(client => client.totalOrders > 0);
+            result = result.filter(vendedor => vendedor.is_active);
         }
 
-        setFilteredClients(result);
+        setFilteredVendedores(result);
     }
 
-    function handleDeleteClient(clientId: string) {
-        if (confirm("Tem certeza que deseja excluir este cliente?")) {
+    async function handleDeleteVendedor(vendedorId: string) {
+        if (confirm("Tem certeza que deseja excluir este vendedor?")) {
             try {
-                const updatedClients = clients.filter(c => c.id !== clientId);
-                setClients(updatedClients);
-                localStorage.setItem("folk_clients", JSON.stringify(updatedClients));
-                toast.success("Cliente excluído com sucesso!");
+                const { error } = await supabase
+                    .from('users')
+                    .delete()
+                    .eq('id', vendedorId);
+
+                if (error) {
+                    throw error;
+                }
+
+                toast.success("Vendedor excluído com sucesso!");
+                loadVendedores(); // Recarregar lista
             } catch (error) {
-                console.error("Erro ao excluir cliente:", error);
-                toast.error("Erro ao excluir cliente");
+                console.error("Erro ao excluir vendedor:", error);
+                toast.error("Erro ao excluir vendedor");
             }
         }
     }
@@ -100,15 +108,15 @@ export default function AdminClientesPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Gestão de Clientes</h1>
-                    <p className="text-sm text-gray-500 mt-1">Gerencie todos os clientes cadastrados</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Gestão de Vendedores</h1>
+                    <p className="text-sm text-gray-500 mt-1">Gerencie todos os vendedores cadastrados</p>
                 </div>
                 <Button
-                    onClick={() => router.push("/admin/clientes/novo")}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                    onClick={() => router.push("/admin/vendedores/novo")}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
                 >
                     <Plus className="h-4 w-4" />
-                    Novo Cliente
+                    Adicionar Vendedor
                 </Button>
             </div>
 
@@ -116,28 +124,28 @@ export default function AdminClientesPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-indigo-100 rounded-lg">
-                            <Users className="h-6 w-6 text-indigo-600" />
+                        <div className="p-3 bg-green-100 rounded-lg">
+                            <BadgeDollarSign className="h-6 w-6 text-green-600" />
                         </div>
                         <div>
-                            <p className="text-sm text-gray-600">Total de Clientes</p>
-                            <p className="text-2xl font-bold text-gray-900">{clients.length}</p>
+                            <p className="text-sm text-gray-600">Total de Vendedores</p>
+                            <p className="text-2xl font-bold text-gray-900">{vendedores.length}</p>
                         </div>
                     </div>
                 </div>
 
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-green-100 rounded-lg">
-                            <Calendar className="h-6 w-6 text-green-600" />
+                        <div className="p-3 bg-blue-100 rounded-lg">
+                            <Calendar className="h-6 w-6 text-blue-600" />
                         </div>
                         <div>
                             <p className="text-sm text-gray-600">Novos (30 dias)</p>
                             <p className="text-2xl font-bold text-gray-900">
-                                {clients.filter(c => {
+                                {vendedores.filter(v => {
                                     const thirtyDaysAgo = new Date();
                                     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                                    return new Date(c.createdAt) >= thirtyDaysAgo;
+                                    return new Date(v.created_at) >= thirtyDaysAgo;
                                 }).length}
                             </p>
                         </div>
@@ -147,12 +155,12 @@ export default function AdminClientesPage() {
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-purple-100 rounded-lg">
-                            <Mail className="h-6 w-6 text-purple-600" />
+                            <TrendingUp className="h-6 w-6 text-purple-600" />
                         </div>
                         <div>
-                            <p className="text-sm text-gray-600">Clientes Ativos</p>
+                            <p className="text-sm text-gray-600">Vendedores Ativos</p>
                             <p className="text-2xl font-bold text-gray-900">
-                                {clients.filter(c => c.totalOrders > 0).length}
+                                {vendedores.filter(v => v.is_active).length}
                             </p>
                         </div>
                     </div>
@@ -168,7 +176,7 @@ export default function AdminClientesPage() {
                         placeholder="Buscar por nome, email ou telefone..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     />
                 </div>
 
@@ -177,11 +185,11 @@ export default function AdminClientesPage() {
                     <select
                         value={filterBy}
                         onChange={(e) => setFilterBy(e.target.value as any)}
-                        className="w-full md:w-48 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                        className="w-full md:w-48 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
                     >
-                        <option value="all">Todos os Clientes</option>
+                        <option value="all">Todos os Vendedores</option>
                         <option value="recent">Novos (30 dias)</option>
-                        <option value="active">Clientes Ativos</option>
+                        <option value="active">Apenas Ativos</option>
                     </select>
                 </div>
             </div>
@@ -202,7 +210,10 @@ export default function AdminClientesPage() {
                                     Telefone
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Nº Pedidos
+                                    Comissão
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Status
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Cadastro
@@ -213,58 +224,78 @@ export default function AdminClientesPage() {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredClients.length === 0 ? (
+                            {filteredVendedores.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                                         {searchTerm || filterBy !== "all"
-                                            ? "Nenhum cliente encontrado com os filtros aplicados"
-                                            : "Nenhum cliente cadastrado. Clique em 'Novo Cliente' para começar."}
+                                            ? "Nenhum vendedor encontrado com os filtros aplicados"
+                                            : "Nenhum vendedor cadastrado. Clique em 'Adicionar Vendedor' para começar."}
                                     </td>
                                 </tr>
                             ) : (
-                                filteredClients.map((client) => (
-                                    <tr key={client.id} className="hover:bg-gray-50 transition-colors">
+                                filteredVendedores.map((vendedor) => (
+                                    <tr key={vendedor.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
-                                                <div className="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                                                    <span className="text-indigo-600 font-medium text-sm">
-                                                        {client.name.charAt(0).toUpperCase()}
-                                                    </span>
+                                                <div className={`flex-shrink-0 h-10 w-10 rounded-full overflow-hidden flex items-center justify-center ${(vendedor as any).avatar_url ? 'bg-gray-100' : 'bg-gradient-to-br from-green-500 to-emerald-600'
+                                                    }`}>
+                                                    {(vendedor as any).avatar_url ? (
+                                                        <img
+                                                            src={(vendedor as any).avatar_url}
+                                                            alt={vendedor.full_name}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-white font-medium text-sm">
+                                                            {vendedor.full_name.charAt(0).toUpperCase()}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="ml-4">
-                                                    <div className="text-sm font-medium text-gray-900">{client.name}</div>
+                                                    <div className="text-sm font-medium text-gray-900">{vendedor.full_name}</div>
+                                                    {!vendedor.is_active && (
+                                                        <span className="text-xs text-red-500">Inativo</span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-2 text-sm text-gray-500">
                                                 <Mail className="h-4 w-4" />
-                                                {client.email}
+                                                {vendedor.email}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-2 text-sm text-gray-500">
                                                 <Phone className="h-4 w-4" />
-                                                {client.phone}
+                                                {vendedor.phone}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                {client.totalOrders} pedidos
+                                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                {vendedor.commission}%
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${vendedor.is_active
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
+                                                }`}>
+                                                {vendedor.is_active ? 'Ativo' : 'Inativo'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {new Date(client.createdAt).toLocaleDateString("pt-BR")}
+                                            {new Date(vendedor.created_at).toLocaleDateString("pt-BR")}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <button
-                                                onClick={() => router.push(`/admin/clientes/${client.id}`)}
-                                                className="text-indigo-600 hover:text-indigo-900 mr-4"
+                                                onClick={() => router.push(`/admin/vendedores/${vendedor.id}`)}
+                                                className="text-green-600 hover:text-green-900 mr-4"
                                             >
                                                 Ver/Editar
                                             </button>
                                             <button
-                                                onClick={() => handleDeleteClient(client.id)}
+                                                onClick={() => handleDeleteVendedor(vendedor.id)}
                                                 className="text-red-600 hover:text-red-900"
                                             >
                                                 Excluir
@@ -279,9 +310,9 @@ export default function AdminClientesPage() {
             </div>
 
             {/* Pagination info */}
-            {filteredClients.length > 0 && (
+            {filteredVendedores.length > 0 && (
                 <div className="text-sm text-gray-500 text-center">
-                    Mostrando {filteredClients.length} de {clients.length} clientes
+                    Mostrando {filteredVendedores.length} de {vendedores.length} vendedores
                 </div>
             )}
         </div>

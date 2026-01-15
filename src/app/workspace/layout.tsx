@@ -10,10 +10,13 @@ import {
     BarChart3,
     LogOut,
     Menu,
-    X
+    X,
+    Palette,
+    PenTool
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
+import { getCurrentUser, logout as authLogout } from "@/lib/auth";
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
@@ -24,41 +27,39 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     const [employeeUser, setEmployeeUser] = useState("");
 
     useEffect(() => {
-        // Verificar autenticação de funcionário
-        const auth = localStorage.getItem("folk_employee_auth");
-        const user = localStorage.getItem("folk_employee_user");
+        const user = getCurrentUser();
 
-        if (pathname === "/workspace/login") {
+        if (!user) {
+            router.push('/login');
             setLoading(false);
             return;
         }
 
-        if (auth === "true" && user) {
-            setIsAuthenticated(true);
-            setEmployeeUser(user);
-        } else {
-            router.push("/workspace/login");
+        // Verificar se usuário tem permissão para acessar workspace (equipe ou admin)
+        if (user.role !== 'equipe' && user.role !== 'admin') {
+            router.push('/login');
+            setLoading(false);
+            return;
         }
+
+        setIsAuthenticated(true);
+        setEmployeeUser(user.full_name);
         setLoading(false);
     }, [pathname, router]);
 
     const handleLogout = () => {
-        localStorage.removeItem("folk_employee_auth");
-        localStorage.removeItem("folk_employee_user");
+        authLogout();
         toast.success("Logout realizado com sucesso!");
-        router.push("/workspace/login");
+        router.push("/login");
     };
 
     const menuItems = [
         { icon: LayoutDashboard, label: "Dashboard", href: "/workspace/dashboard" },
         { icon: Package, label: "Pedidos", href: "/workspace/pedidos" },
         { icon: BarChart3, label: "Produção", href: "/workspace/producao" },
+        { icon: Palette, label: "Estampas", href: "/workspace/estampas" },
+        { icon: PenTool, label: "Criar Estampa", href: "/workspace/studio" },
     ];
-
-    // Página de login não usa o layout
-    if (pathname === "/workspace/login") {
-        return <>{children}</>;
-    }
 
     if (loading) {
         return (

@@ -5,7 +5,7 @@ interface KanbanColumnProps {
     title: string;
     count: number;
     icon: LucideIcon;
-    color: "blue" | "yellow" | "green" | "gray";
+    color: "blue" | "yellow" | "green" | "gray" | "orange" | "purple" | "red";
     children: ReactNode;
 }
 
@@ -15,6 +15,9 @@ export default function KanbanColumn({ title, count, icon: Icon, color, children
         yellow: "border-t-[3px] border-[#fdab3d]",
         green: "border-t-[3px] border-[#00c875]",
         gray: "border-t-[3px] border-[#676879]",
+        orange: "border-t-[3px] border-orange-500",
+        purple: "border-t-[3px] border-purple-500",
+        red: "border-t-[3px] border-red-500",
     };
 
     const headerTextColors = {
@@ -22,6 +25,9 @@ export default function KanbanColumn({ title, count, icon: Icon, color, children
         yellow: "text-[#fdab3d]",
         green: "text-[#00c875]",
         gray: "text-[#676879]",
+        orange: "text-orange-500",
+        purple: "text-purple-500",
+        red: "text-red-500",
     };
 
     return (

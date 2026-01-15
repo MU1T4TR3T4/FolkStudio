@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, User, Mail, Phone, Shield } from "lucide-react";
+import { ArrowLeft, Save, User, Mail, Phone, Shield, Eye, EyeOff } from "lucide-react";
 import { toast, Toaster } from "sonner";
+import { createUser } from "@/lib/auth";
 
 interface Employee {
     id: string;
@@ -17,54 +18,66 @@ interface Employee {
 
 export default function NovoFuncionarioPage() {
     const router = useRouter();
+    const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
         email: "",
         phone: "",
+        password: "",
+        confirmPassword: "",
         role: "funcionario" as "admin" | "funcionario",
         isActive: true,
     });
 
-    function handleSubmit(e: React.FormEvent) {
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-
-        // Validação
-        if (!formData.name.trim()) {
-            toast.error("Nome é obrigatório");
-            return;
-        }
-
-        if (!formData.email.trim()) {
-            toast.error("Email é obrigatório");
-            return;
-        }
-
-        // Validar email único
-        const existing = JSON.parse(localStorage.getItem("folk_employees") || "[]");
-        if (existing.some((e: Employee) => e.email === formData.email)) {
-            toast.error("Este email já está cadastrado");
-            return;
-        }
+        setLoading(true);
 
         try {
-            const newEmployee: Employee = {
-                id: crypto.randomUUID(),
-                name: formData.name.trim(),
-                email: formData.email.trim(),
-                phone: formData.phone.trim(),
-                role: formData.role,
-                createdAt: new Date().toISOString(),
-                isActive: formData.isActive,
-            };
+            // Validação
+            if (!formData.name.trim() || !formData.email.trim() || !formData.password) {
+                toast.error("Preencha todos os campos obrigatórios");
+                setLoading(false);
+                return;
+            }
 
-            const employees = [...existing, newEmployee];
-            localStorage.setItem("folk_employees", JSON.stringify(employees));
+            // Validar senha
+            if (formData.password.length < 8) {
+                toast.error("A senha deve ter no mínimo 8 caracteres");
+                setLoading(false);
+                return;
+            }
+
+            if (formData.password !== formData.confirmPassword) {
+                toast.error("As senhas não coincidem");
+                setLoading(false);
+                return;
+            }
+
+            // Criar funcionário usando sistema de autenticação
+            const result = await createUser({
+                email: formData.email.trim(),
+                password: formData.password,
+                name: formData.name.trim(),
+                phone: formData.phone.trim(),
+                role: 'equipe', // Sempre 'equipe' para funcionários
+            });
+
+            if (!result.success) {
+                toast.error(result.error || "Erro ao cadastrar funcionário");
+                setLoading(false);
+                return;
+            }
 
             toast.success("Funcionário cadastrado com sucesso!");
             router.push("/admin/funcionarios");
         } catch (error) {
             console.error("Erro ao salvar funcionário:", error);
             toast.error("Erro ao salvar funcionário");
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -166,6 +179,56 @@ export default function NovoFuncionarioPage() {
                         </p>
                     </div>
 
+                    {/* Senha */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Senha *
+                        </label>
+                        <div className="relative">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                placeholder="Mínimo 8 caracteres"
+                                className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                required
+                                minLength={8}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Confirmar Senha */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Confirmar Senha *
+                        </label>
+                        <div className="relative">
+                            <input
+                                type={showConfirmPassword ? "text" : "password"}
+                                value={formData.confirmPassword}
+                                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                placeholder="Digite a senha novamente"
+                                className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                required
+                                minLength={8}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Status */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -205,10 +268,11 @@ export default function NovoFuncionarioPage() {
                     </button>
                     <button
                         type="submit"
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                        disabled={loading}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50"
                     >
                         <Save className="h-4 w-4" />
-                        Salvar Funcionário
+                        {loading ? "Salvando..." : "Salvar Funcionário"}
                     </button>
                 </div>
             </form>

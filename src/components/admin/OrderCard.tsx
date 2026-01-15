@@ -1,4 +1,4 @@
-import { Package } from "lucide-react";
+import { Package, AlertCircle } from "lucide-react";
 
 interface OrderCardProps {
     order: {
@@ -8,13 +8,21 @@ interface OrderCardProps {
         totalQty: number;
         sizes: Record<string, number>;
         createdAt: string;
+        ad1?: number;
+        ad2?: number;
+        ad3?: number;
+        ad4?: number;
+        kanban_stage?: string;
+        status?: string;
     };
     onClick: () => void;
 }
 
 export default function OrderCard({ order, onClick }: OrderCardProps) {
+    const isReturned = order.kanban_stage === 'returned' || order.status === 'returned';
+
     const getSizesText = () => {
-        const sizes = Object.entries(order.sizes)
+        const sizes = Object.entries(order.sizes || {})
             .filter(([_, qty]) => qty > 0)
             .map(([size, qty]) => `${size}(${qty})`)
             .join(", ");
@@ -33,10 +41,17 @@ export default function OrderCard({ order, onClick }: OrderCardProps) {
     return (
         <div
             onClick={onClick}
-            className="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-all hover:border-blue-300"
+            className={`bg-white rounded-lg border p-4 cursor-pointer hover:shadow-md transition-all relative ${isReturned ? 'border-red-500 shadow-sm' : 'border-gray-200 hover:border-blue-300'
+                }`}
         >
+            {isReturned && (
+                <div className="absolute top-2 right-2 bg-red-100 text-red-700 p-1 rounded-full z-10" title="Pedido Devolvido">
+                    <AlertCircle className="h-4 w-4" />
+                </div>
+            )}
+
             {/* Imagem */}
-            <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden">
+            <div className={`aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden ${isReturned ? 'opacity-90' : ''}`}>
                 <img
                     src={order.imageUrl}
                     alt="Mockup"
@@ -65,6 +80,15 @@ export default function OrderCard({ order, onClick }: OrderCardProps) {
                     <div className="text-xs text-gray-500">
                         {getSizesText()}
                     </div>
+                    {/* Adicionais */}
+                    {(order.ad1 || order.ad2 || order.ad3 || order.ad4) ? (
+                        <div className="flex flex-wrap gap-1 mt-1 pt-1 border-t border-gray-50">
+                            {order.ad1 ? <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">AD1: R${order.ad1}</span> : null}
+                            {order.ad2 ? <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">AD2: R${order.ad2}</span> : null}
+                            {order.ad3 ? <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">AD3: R${order.ad3}</span> : null}
+                            {order.ad4 ? <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">AD4: R${order.ad4}</span> : null}
+                        </div>
+                    ) : null}
                 </div>
 
                 <div className="pt-2 border-t border-gray-100">

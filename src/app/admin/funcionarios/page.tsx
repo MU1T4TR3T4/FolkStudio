@@ -4,27 +4,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Users, Search, Filter, Plus, Edit, Trash2, UserCheck, UserX } from "lucide-react";
 import { toast, Toaster } from "sonner";
-
-interface Employee {
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
-    role: "admin" | "funcionario";
-    createdAt: string;
-    isActive: boolean;
-    totalOrdersProduced?: number;
-    averageProductionTime?: number;
-}
+import { getAllUsers, toggleUserStatus, deleteUser, User } from "@/lib/auth";
 
 export default function FuncionariosPage() {
     const router = useRouter();
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
+    const [employees, setEmployees] = useState<User[]>([]);
+    const [filteredEmployees, setFilteredEmployees] = useState<User[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState<string>("todos");
     const [statusFilter, setStatusFilter] = useState<string>("todos");
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         loadEmployees();
@@ -34,42 +24,18 @@ export default function FuncionariosPage() {
         filterEmployees();
     }, [searchTerm, roleFilter, statusFilter, employees]);
 
-    function loadEmployees() {
+    async function loadEmployees() {
+        setLoading(true);
         try {
-            const saved = localStorage.getItem("folk_employees");
-            if (saved) {
-                const parsed: Employee[] = JSON.parse(saved);
-                // Calcular métricas para cada funcionário
-                const withMetrics = parsed.map(emp => ({
-                    ...emp,
-                    ...calculateMetrics(emp)
-                }));
-                setEmployees(withMetrics);
-                setFilteredEmployees(withMetrics);
-            } else {
-                setEmployees([]);
-                setFilteredEmployees([]);
-            }
+            const data = await getAllUsers();
+            // Filter to show only team/admin, exclude just in case
+            setEmployees(data);
+            setFilteredEmployees(data);
         } catch (error) {
             console.error("Erro ao carregar funcionários:", error);
             toast.error("Erro ao carregar funcionários");
-        }
-    }
-
-    function calculateMetrics(employee: Employee) {
-        try {
-            const orders = JSON.parse(localStorage.getItem("folk_studio_orders") || "[]");
-            const employeeOrders = orders.filter((o: any) => o.responsible === employee.name);
-
-            return {
-                totalOrdersProduced: employeeOrders.length,
-                averageProductionTime: 0 // Simplificado por enquanto
-            };
-        } catch {
-            return {
-                totalOrdersProduced: 0,
-                averageProductionTime: 0
-            };
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -81,7 +47,7 @@ export default function FuncionariosPage() {
             const term = searchTerm.toLowerCase();
             result = result.filter(
                 (e) =>
-                    e.name.toLowerCase().includes(term) ||
+                    e.full_name.toLowerCase().includes(term) ||
                     e.email.toLowerCase().includes(term)
             );
         }
@@ -94,39 +60,41 @@ export default function FuncionariosPage() {
         // Filtro por status
         if (statusFilter !== "todos") {
             const isActive = statusFilter === "ativo";
-            result = result.filter((e) => e.isActive === isActive);
+            result = result.filter((e) => e.is_active === isActive);
         }
 
         setFilteredEmployees(result);
     }
 
-    function handleDelete(id: string) {
+    async function handleDelete(id: string) {
         const employee = employees.find(e => e.id === id);
         if (!employee) return;
 
-        if (!confirm(`Excluir funcionário ${employee.name}?`)) return;
+        if (!confirm(`Excluir funcionário ${employee.full_name}? esta ação não pode ser desfeita.`)) return;
 
         try {
-            const updated = employees.filter((e) => e.id !== id);
-            setEmployees(updated);
-            localStorage.setItem("folk_employees", JSON.stringify(updated));
-            toast.success("Funcionário excluído com sucesso!");
+            const result = await deleteUser(id);
+            if (result.success) {
+                toast.success("Funcionário excluído com sucesso!");
+                loadEmployees();
+            } else {
+                toast.error(result.error);
+            }
         } catch (error) {
-            console.error("Erro ao excluir funcionário:", error);
+            console.error("Erro ao excluir:", error);
             toast.error("Erro ao excluir funcionário");
         }
     }
 
-    function handleToggleStatus(id: string) {
+    async function handleToggleStatus(id: string, currentStatus: boolean) {
         try {
-            const updated = employees.map((e) =>
-                e.id === id ? { ...e, isActive: !e.isActive } : e
-            );
-            setEmployees(updated);
-            localStorage.setItem("folk_employees", JSON.stringify(updated));
-
-            const employee = updated.find(e => e.id === id);
-            toast.success(`Funcionário ${employee?.isActive ? 'ativado' : 'desativado'} com sucesso!`);
+            const result = await toggleUserStatus(id, !currentStatus);
+            if (result.success) {
+                toast.success(`Funcionário ${!currentStatus ? 'ativado' : 'desativado'} com sucesso!`);
+                loadEmployees();
+            } else {
+                toast.error(result.error);
+            }
         } catch (error) {
             console.error("Erro ao atualizar status:", error);
             toast.error("Erro ao atualizar status");
@@ -157,8 +125,12 @@ export default function FuncionariosPage() {
         );
     };
 
-    const activeEmployees = employees.filter(e => e.isActive).length;
+    const activeEmployees = employees.filter(e => e.is_active).length;
     const adminCount = employees.filter(e => e.role === "admin").length;
+
+    if (loading) {
+        return <div className="p-8 text-center text-gray-500">Carregando equipe...</div>;
+    }
 
     return (
         <div className="space-y-6">
@@ -237,8 +209,8 @@ export default function FuncionariosPage() {
                     <button
                         onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                         className={`px-3 py-2 border rounded-lg transition-colors ${showAdvancedFilters
-                                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                                : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                            ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                            : "border-gray-300 text-gray-700 hover:bg-gray-50"
                             }`}
                     >
                         Filtros Avançados
@@ -259,7 +231,8 @@ export default function FuncionariosPage() {
                             >
                                 <option value="todos">Todos os Cargos</option>
                                 <option value="admin">Administrador</option>
-                                <option value="funcionario">Funcionário</option>
+                                <option value="vendedor">Vendedor</option>
+                                <option value="equipe">Equipe</option>
                             </select>
                         </div>
                         <div>
@@ -301,9 +274,6 @@ export default function FuncionariosPage() {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Pedidos
-                                </th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Ações
                                 </th>
@@ -312,7 +282,7 @@ export default function FuncionariosPage() {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {filteredEmployees.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                                         {employees.length === 0
                                             ? "Nenhum funcionário cadastrado. Clique em 'Novo Funcionário' para começar."
                                             : "Nenhum funcionário encontrado com os filtros aplicados."}
@@ -323,7 +293,7 @@ export default function FuncionariosPage() {
                                     <tr key={employee.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-medium text-gray-900">
-                                                {employee.name}
+                                                {employee.full_name}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -336,28 +306,23 @@ export default function FuncionariosPage() {
                                             {getRoleBadge(employee.role)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            {getStatusBadge(employee.isActive)}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">
-                                                {employee.totalOrdersProduced || 0}
-                                            </div>
+                                            {getStatusBadge(employee.is_active)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     onClick={() => router.push(`/admin/funcionarios/${employee.id}`)}
                                                     className="text-indigo-600 hover:text-indigo-900"
-                                                    title="Editar"
+                                                    title="Detalhes"
                                                 >
                                                     <Edit className="h-4 w-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleToggleStatus(employee.id)}
-                                                    className={employee.isActive ? "text-yellow-600 hover:text-yellow-900" : "text-green-600 hover:text-green-900"}
-                                                    title={employee.isActive ? "Desativar" : "Ativar"}
+                                                    onClick={() => handleToggleStatus(employee.id, employee.is_active)}
+                                                    className={employee.is_active ? "text-yellow-600 hover:text-yellow-900" : "text-green-600 hover:text-green-900"}
+                                                    title={employee.is_active ? "Desativar" : "Ativar"}
                                                 >
-                                                    {employee.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                                                    {employee.is_active ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(employee.id)}

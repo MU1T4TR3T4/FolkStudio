@@ -46,18 +46,6 @@ export function Sidebar() {
                     </Link>
                 ))}
             </nav>
-
-            <div className="p-4 border-t border-gray-200">
-                <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
-                    <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                        <span className="text-xs font-medium text-gray-600">US</span>
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900">Usuário</span>
-                        <span className="text-xs text-gray-500">Gratuito</span>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 }
