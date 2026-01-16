@@ -110,7 +110,7 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
 
 
     // HANDLERS
-    async function handleUpload(e: React.ChangeEvent<HTMLInputElement>, type: 'photolith' | 'final' | 'signature') {
+    async function handleUpload(e: React.ChangeEvent<HTMLInputElement>, type: 'photolith' | 'final' | 'signature' | 'mockup' | 'pdf') {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -126,6 +126,9 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                 if (type === 'photolith') onUpdateOrder({ ...order, photolith_url: url });
                 else if (type === 'final') onUpdateOrder({ ...order, final_product_url: url });
                 else if (type === 'signature') onUpdateOrder({ ...order, client_signature_url: url });
+                // NEW: Handle Mockup and PDF updates
+                else if (type === 'mockup') onUpdateOrder({ ...order, imageUrl: url, image_url: url } as any); // Update both for compatibility
+                else if (type === 'pdf') onUpdateOrder({ ...order, pdfUrl: url, pdf_url: url } as any);
             }
             // Update local resolved state
             setFiles(prev => ({ ...prev, [type]: base64 }));
@@ -255,41 +258,68 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
 
     // COMPONENTS FOR UI REUSE
 
-    const FileCard = ({ label, fileUrl, type }: { label: string, fileUrl: string | null, type: 'image' | 'pdf' }) => (
-        <div className="bg-white border rounded-lg p-3 flex items-start gap-4 hover:bg-gray-50 transition-colors">
-            <div className="h-16 w-16 bg-gray-100 rounded-md flex items-center justify-center shrink-0 overflow-hidden border">
+    const FileCard = ({ label, fileUrl, type, uploadType }: { label: string, fileUrl: string | null, type: 'image' | 'pdf', uploadType: 'photolith' | 'final' | 'signature' | 'mockup' | 'pdf' }) => (
+        <div className="bg-white border rounded-lg p-3 flex items-start gap-4 hover:bg-gray-50 transition-colors relative group">
+            <div className="h-16 w-16 bg-gray-100 rounded-md flex items-center justify-center shrink-0 overflow-hidden border relative">
                 {fileUrl ? (
                     type === 'image' ? (
                         <img src={fileUrl} className="w-full h-full object-cover" />
                     ) : <FileText className="text-red-500 h-8 w-8" />
                 ) : <Upload className="text-gray-300 h-6 w-6" />}
+
+                {/* Upload Overlay on Hover/Empty */}
+                <label className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/50 transition-colors cursor-pointer group-hover:opacity-100 opacity-0">
+                    <span className="sr-only">Upload</span>
+                    <Upload className="text-white h-5 w-5 opacity-0 group-hover:opacity-100" />
+                    <input type="file" accept={type === 'image' ? "image/*" : "application/pdf"} onChange={(e) => handleUpload(e, uploadType)} className="hidden" />
+                </label>
+                {!fileUrl && (
+                    <label className="absolute inset-0 flex items-center justify-center cursor-pointer">
+                        <input type="file" accept={type === 'image' ? "image/*" : "application/pdf"} onChange={(e) => handleUpload(e, uploadType)} className="hidden" />
+                    </label>
+                )}
             </div>
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{label}</p>
+                <div className="flex justify-between items-start">
+                    <p className="text-sm font-medium text-gray-900 truncate">{label}</p>
+                    {/* Add edit button (upload) */}
+                    <label className="cursor-pointer p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-blue-600" title="Alterar arquivo">
+                        <Upload className="h-4 w-4" />
+                        <input type="file" accept={type === 'image' ? "image/*" : "application/pdf"} onChange={(e) => handleUpload(e, uploadType)} className="hidden" />
+                    </label>
+                </div>
+
                 <div className="mt-2 flex flex-wrap gap-2">
                     {fileUrl ? (
                         <>
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-9 px-5 text-xs font-medium flex flex-row items-center gap-2 whitespace-nowrap min-w-[90px]"
+                                className="h-9 px-3 text-xs font-medium flex-1 min-w-[80px]"
                                 onClick={() => handleDownload(fileUrl, `${label}.${type === 'pdf' ? 'pdf' : 'png'}`)}
                             >
-                                <Download className="h-4 w-4" />
-                                <span>Baixar</span>
+                                <Download className="h-3 w-3 mr-1.5" />
+                                Baixar
                             </Button>
                             <Button
                                 variant="secondary"
                                 size="sm"
-                                className="h-9 px-5 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 flex flex-row items-center gap-2 whitespace-nowrap min-w-[90px]"
+                                className="h-9 px-3 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 flex-1 min-w-[80px]"
                                 onClick={() => window.open(fileUrl, '_blank')}
                             >
-                                <Eye className="h-4 w-4" />
-                                <span>Visualizar</span>
+                                <Eye className="h-3 w-3 mr-1.5" />
+                                Ver
                             </Button>
                         </>
                     ) : (
-                        <span className="text-xs text-gray-400 italic">Pendente</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 italic">Pendente</span>
+                            {/* Quick Upload Button if Missing */}
+                            <label className="cursor-pointer text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100 hover:bg-blue-100 font-medium transition-colors">
+                                Adicionar
+                                <input type="file" accept={type === 'image' ? "image/*" : "application/pdf"} onChange={(e) => handleUpload(e, uploadType)} className="hidden" />
+                            </label>
+                        </div>
                     )}
                 </div>
             </div>
@@ -569,11 +599,13 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                                     <Paperclip className="h-5 w-5 text-gray-400" /> Arquivos
                                 </h3>
                                 <div className="space-y-3">
-                                    <FileCard label="Ordem de Compra (PDF)" fileUrl={files.pdf} type="pdf" />
-                                    <FileCard label="Mockup do Pedido" fileUrl={files.mockup} type="image" />
-                                    <FileCard label="Fotolito" fileUrl={files.photolith} type="image" />
-                                    <FileCard label="Foto Produto Final" fileUrl={files.final} type="image" />
-                                    <FileCard label="Assinatura Cliente" fileUrl={files.signature} type="image" />
+                                    <div className="space-y-3">
+                                        <FileCard label="Ordem de Compra (PDF)" fileUrl={files.pdf} type="pdf" uploadType="pdf" />
+                                        <FileCard label="Mockup do Pedido" fileUrl={files.mockup} type="image" uploadType="mockup" />
+                                        <FileCard label="Fotolito" fileUrl={files.photolith} type="image" uploadType="photolith" />
+                                        <FileCard label="Foto Produto Final" fileUrl={files.final} type="image" uploadType="final" />
+                                        <FileCard label="Assinatura Cliente" fileUrl={files.signature} type="image" uploadType="signature" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
