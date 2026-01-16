@@ -190,7 +190,12 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
             nextStage = 'finalized';
         }
 
-        if (nextStage) onUpdateStatus(order.id, nextStage);
+        if (nextStage) {
+            onUpdateStatus(order.id, nextStage);
+            toast.success("Etapa avançada com sucesso!");
+            // Auto-close for all stages
+            setTimeout(() => onClose(), 500);
+        }
     }
 
     function handleReturnOrder() {
@@ -199,6 +204,7 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
         onUpdateOrder({ ...order, return_reason: returnReason });
         onUpdateStatus(order.id, 'returned');
         setShowReturnInput(false);
+        setTimeout(() => onClose(), 500);
     }
 
     function handleDownload(url: string | null, filename: string) {
@@ -272,11 +278,6 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                     <Upload className="text-white h-5 w-5 opacity-0 group-hover:opacity-100" />
                     <input type="file" accept={type === 'image' ? "image/*" : "application/pdf"} onChange={(e) => handleUpload(e, uploadType)} className="hidden" />
                 </label>
-                {!fileUrl && (
-                    <label className="absolute inset-0 flex items-center justify-center cursor-pointer">
-                        <input type="file" accept={type === 'image' ? "image/*" : "application/pdf"} onChange={(e) => handleUpload(e, uploadType)} className="hidden" />
-                    </label>
-                )}
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
@@ -599,11 +600,16 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                                 </h3>
                                 <div className="space-y-3">
                                     <div className="space-y-3">
-                                        <FileCard label="Ordem de Compra (PDF)" fileUrl={files.pdf} type="pdf" uploadType="pdf" />
-                                        <FileCard label="Mockup do Pedido" fileUrl={files.mockup} type="image" uploadType="mockup" />
-                                        <FileCard label="Fotolito" fileUrl={files.photolith} type="image" uploadType="photolith" />
-                                        <FileCard label="Foto Produto Final" fileUrl={files.final} type="image" uploadType="final" />
-                                        <FileCard label="Assinatura Cliente" fileUrl={files.signature} type="image" uploadType="signature" />
+                                        {files.pdf && <FileCard label="Ordem de Compra (PDF)" fileUrl={files.pdf} type="pdf" uploadType="pdf" />}
+                                        {files.mockup && <FileCard label="Mockup do Pedido" fileUrl={files.mockup} type="image" uploadType="mockup" />}
+                                        {files.photolith && <FileCard label="Fotolito" fileUrl={files.photolith} type="image" uploadType="photolith" />}
+                                        {files.final && <FileCard label="Foto Produto Final" fileUrl={files.final} type="image" uploadType="final" />}
+                                        {files.signature && <FileCard label="Assinatura Cliente" fileUrl={files.signature} type="image" uploadType="signature" />}
+
+                                        {/* Fallback msg if no files */}
+                                        {!files.pdf && !files.mockup && !files.photolith && !files.final && !files.signature && (
+                                            <p className="text-sm text-gray-400 italic p-4 border border-dashed rounded text-center">Nenhum arquivo anexado ainda.</p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
