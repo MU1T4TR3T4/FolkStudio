@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, LayoutGrid, List, Search, Filter } from "lucide-react";
 import { toast, Toaster } from "sonner";
-import { Order, getAllOrders, updateOrderStatus as updateStatusInDb, updateOrder } from "@/lib/orders";
+import { Order, getAllOrders, updateOrderStatus as updateStatusInDb, updateOrder, deleteOrder } from "@/lib/orders";
 import { getImage } from "@/lib/storage";
 
 // Unified Components
@@ -100,6 +100,18 @@ export default function WorkspacePedidosPage() {
         await updateOrder(updated.id, updated);
     };
 
+    const handleDeleteOrder = async (orderId: string) => {
+        const success = await deleteOrder(orderId);
+        if (success) {
+            toast.success("Pedido excluído com sucesso");
+            setOrders(prev => prev.filter(o => o.id !== orderId));
+            setFilteredOrders(prev => prev.filter(o => o.id !== orderId));
+            setSelectedOrder(null);
+        } else {
+            toast.error("Erro ao excluir pedido");
+        }
+    };
+
     return (
         <div className="space-y-6">
             <Toaster position="top-right" richColors />
@@ -184,6 +196,7 @@ export default function WorkspacePedidosPage() {
                     onClose={() => setSelectedOrder(null)}
                     onUpdateStatus={handleUpdateStatus}
                     onUpdateOrder={handleUpdateOrder}
+                    onDeleteOrder={handleDeleteOrder}
                     readOnly={false} // Workspace users can advance stages
                 />
             )}

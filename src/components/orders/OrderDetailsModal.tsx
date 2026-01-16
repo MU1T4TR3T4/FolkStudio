@@ -13,10 +13,11 @@ interface OrderDetailsModalProps {
     onUpdateStatus?: (orderId: string, newStatus: string) => void;
     onUpdateOrder?: (updatedOrder: Order) => void;
     onEditOrder?: (order: Order) => void;
+    onDeleteOrder?: (orderId: string) => void;
     readOnly?: boolean;
 }
 
-export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrder, onEditOrder, readOnly = false }: OrderDetailsModalProps) {
+export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrder, onEditOrder, onDeleteOrder, readOnly = false }: OrderDetailsModalProps) {
     const [returnReason, setReturnReason] = useState("");
     const [showReturnInput, setShowReturnInput] = useState(false);
 
@@ -326,6 +327,19 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
         </div>
     );
 
+    // TRANSLATION MAP
+    const checklistTranslations: Record<string, string> = {
+        interpretation: "Interpretação da Arte",
+        order_match: "Encomenda (Tamanhos/Cores)",
+        photolith_ok: "Fotolito Aprovado",
+        qty_check: "Qtd/Modelo/Cor Conferidos",
+        quality_check: "Qualidade Confecção",
+        photolith_final_check: "Conferência Final Fotolito",
+        qty_final_check: "Qtd Final OK",
+        quality_mockup_check: "Qualidade vs Mockup",
+        packaging_check: "Embalagem OK"
+    };
+
     const ChecklistHistoryItem = ({ title, data }: { title: string, data: any }) => {
         if (!data || !data.items) return null;
         return (
@@ -341,7 +355,7 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                     {Object.entries(data.items).map(([key, value]) => (
                         <li key={key} className="flex items-center gap-2 text-sm text-gray-600">
                             {value ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-red-300" />}
-                            <span className="capitalize">{key.replace(/_/g, ' ')}</span>
+                            <span className="capitalize">{checklistTranslations[key] || key.replace(/_/g, ' ')}</span>
                         </li>
                     ))}
                 </ul>
@@ -458,15 +472,30 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                                                 </div>
                                             ) : (
                                                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg flex flex-col md:flex-row items-center justify-between gap-4">
-                                                    <div>
+                                                    <div className="flex-1">
                                                         <p className="font-medium text-blue-800">Este pedido ainda não foi aprovado.</p>
                                                         <p className="text-sm text-blue-600">Você pode editá-lo para corrigir informações.</p>
                                                     </div>
-                                                    {onEditOrder && (
-                                                        <Button onClick={() => onEditOrder(order)} className="whitespace-nowrap gap-2 bg-blue-600 hover:bg-blue-700 text-white">
-                                                            <Edit className="h-4 w-4" /> Editar Pedido
-                                                        </Button>
-                                                    )}
+                                                    <div className="flex items-center gap-3">
+                                                        {onDeleteOrder && (
+                                                            <Button
+                                                                onClick={() => {
+                                                                    if (confirm("Tem certeza que deseja EXCLUIR este pedido? Essa ação não pode ser desfeita.")) {
+                                                                        onDeleteOrder(order.id);
+                                                                    }
+                                                                }}
+                                                                variant="outline"
+                                                                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                                            >
+                                                                Excluir
+                                                            </Button>
+                                                        )}
+                                                        {onEditOrder && (
+                                                            <Button onClick={() => onEditOrder(order)} className="whitespace-nowrap gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+                                                                <Edit className="h-4 w-4" /> Editar Pedido
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )}
                                         </>
@@ -511,7 +540,7 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                                             <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
                                                 <label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={checklistPhotolith.photolith_ok} onChange={e => setChecklistPhotolith({ ...checklistPhotolith, photolith_ok: e.target.checked })} className="w-5 h-5 rounded text-yellow-600 focus:ring-yellow-500" /><span className="font-semibold text-yellow-800">Confirmo que o fotolito conferido está correto</span></label>
                                             </div>
-                                            <Button size="lg" className="w-full mt-4 h-12 text-lg" disabled={!canAdvanceFromPhotolith()} onClick={handleAdvanceStage}>
+                                            <Button size="lg" className="w-full mt-4 h-12 text-lg flex items-center justify-center" disabled={!canAdvanceFromPhotolith()} onClick={handleAdvanceStage}>
                                                 <ArrowRight className="mr-2 h-5 w-5" /> Concluir Etapa Fotolito e Avançar
                                             </Button>
                                         </div>
@@ -547,12 +576,50 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                                                 <div>
                                                     <label className="block font-medium mb-2">Foto do Produto *</label>
                                                     <input type="file" onChange={e => handleUpload(e, 'final')} className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
-                                                    {files.final && <img src={files.final} className="mt-2 h-32 rounded object-cover" />}
+                                                    {files.final && (
+                                                        <div className="mt-3">
+                                                            <img src={files.final} className="mb-2 h-32 rounded object-cover" />
+
+                                                            {/* Signature Link Button */}
+                                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                                                <p className="text-sm text-blue-800 font-medium mb-2">Link de Assinatura para o Cliente:</p>
+                                                                <div className="flex gap-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        className="flex-1 bg-white border-blue-300 text-blue-700 hover:bg-blue-100"
+                                                                        onClick={async () => {
+                                                                            // Generate token if missing
+                                                                            let token = order.delivery_token;
+                                                                            if (!token) {
+                                                                                token = crypto.randomUUID();
+                                                                                if (onUpdateOrder) {
+                                                                                    onUpdateOrder({ ...order, delivery_token: token });
+                                                                                }
+                                                                            }
+
+                                                                            const link = `${window.location.origin}/entrega/${token}`;
+                                                                            await navigator.clipboard.writeText(link);
+                                                                            toast.success("Link copiado! Envie para o cliente.");
+                                                                        }}
+                                                                    >
+                                                                        <Copy className="h-4 w-4 mr-2" /> Copiar Link de Assinatura
+                                                                    </Button>
+                                                                </div>
+                                                                <p className="text-xs text-blue-600 mt-2">Envie este link para o cliente conferir a foto e assinar o recebimento.</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="block font-medium mb-2">Assinatura Cliente *</label>
+                                                    <div className="text-sm text-gray-500 mb-2">Pode ser assinada pelo link acima ou anexada manualmente.</div>
                                                     <input type="file" onChange={e => handleUpload(e, 'signature')} className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
-                                                    {files.signature && <img src={files.signature} className="mt-2 h-20 rounded border object-contain bg-white" />}
+                                                    {(files.signature || order.client_signature_url) && (
+                                                        <div className="mt-2 text-center border p-2 rounded bg-green-50 border-green-200">
+                                                            <p className="text-xs font-bold text-green-700 mb-1">Assinatura Recebida</p>
+                                                            <img src={files.signature || order.client_signature_url} className="h-16 mx-auto object-contain" />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <Button size="lg" className="w-full mt-4 bg-green-600 hover:bg-green-700" disabled={!canFinalizeDelivery()} onClick={handleAdvanceStage}>

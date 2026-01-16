@@ -55,11 +55,47 @@ export interface Order {
     client_signature_url?: string;
     delivered_at?: string;
     observations?: string;
+    delivery_token?: string; // Token for client signature link
 }
 
 /**
  * Get all orders from Supabase (with localStorage fallback)
  */
+// ... (existing code)
+
+/**
+ * Get order by delivery token
+ */
+export async function getOrderByDeliveryToken(token: string): Promise<Order | null> {
+    try {
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('delivery_token', token)
+            .single();
+
+        if (error) throw error;
+        if (data) return data as Order;
+
+        // Fallback to localStorage
+        const saved = localStorage.getItem('folk_studio_orders');
+        if (saved) {
+            const orders: Order[] = JSON.parse(saved);
+            return orders.find(o => o.delivery_token === token) || null;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching order by token:', error);
+        // Fallback to localStorage
+        const saved = localStorage.getItem('folk_studio_orders');
+        if (saved) {
+            const orders: Order[] = JSON.parse(saved);
+            return orders.find(o => o.delivery_token === token) || null;
+        }
+        return null;
+    }
+}
+
 export async function getAllOrders(): Promise<Order[]> {
     try {
         const { data, error } = await supabase
