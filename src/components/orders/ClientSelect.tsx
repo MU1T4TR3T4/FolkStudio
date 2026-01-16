@@ -75,7 +75,7 @@ export function ClientSelect({ value, onSelect, className }: ClientSelectProps) 
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-full justify-between bg-white text-left font-normal border-gray-300 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full flex items-center justify-between bg-white text-left font-normal border-gray-300 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500/20 px-3 py-2 h-auto"
                     onClick={() => setOpen(!open)}
                     type="button"
                 >

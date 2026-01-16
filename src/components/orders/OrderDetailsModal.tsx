@@ -266,11 +266,28 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
             </div>
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{label}</p>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                     {fileUrl ? (
-                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => handleDownload(fileUrl, `${label}.png`)}>
-                            <Download className="h-3 w-3" /> Baixar
-                        </Button>
+                        <>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 px-5 text-xs font-medium flex flex-row items-center gap-2 whitespace-nowrap min-w-[90px]"
+                                onClick={() => handleDownload(fileUrl, `${label}.${type === 'pdf' ? 'pdf' : 'png'}`)}
+                            >
+                                <Download className="h-4 w-4" />
+                                <span>Baixar</span>
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-9 px-5 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 flex flex-row items-center gap-2 whitespace-nowrap min-w-[90px]"
+                                onClick={() => window.open(fileUrl, '_blank')}
+                            >
+                                <Eye className="h-4 w-4" />
+                                <span>Visualizar</span>
+                            </Button>
+                        </>
                     ) : (
                         <span className="text-xs text-gray-400 italic">Pendente</span>
                     )}
@@ -503,14 +520,44 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                         {/* 2. Creation Checklist & Files */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                            {/* Left: Creation Report */}
+                            {/* Left: Client Info */}
                             <div>
                                 <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
                                     <FileText className="h-5 w-5 text-gray-400" /> Informações
                                 </h3>
-                                <CreationChecklist />
+                                <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm mb-4 space-y-3">
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase font-semibold">Cliente</p>
+                                        <div className="font-medium text-gray-900 flex items-center gap-2">
+                                            <User className="h-4 w-4 text-gray-400" />
+                                            {order.customer_name || 'Cliente não identificado'}
+                                        </div>
+                                        {order.customer_email && <p className="text-sm text-gray-500 ml-6">{order.customer_email}</p>}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase font-semibold">Data do Pedido</p>
+                                        <div className="font-medium text-gray-900 flex items-center gap-2">
+                                            <Calendar className="h-4 w-4 text-gray-400" />
+                                            {new Date(order.created_at).toLocaleDateString('pt-BR', {
+                                                day: '2-digit',
+                                                month: 'long',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
+                                        </div>
+                                    </div>
+                                    {order.product_type && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase font-semibold">Detalhes</p>
+                                            <p className="text-sm text-gray-700">{order.product_type} - {order.color} - {order.quantity}un</p>
+                                        </div>
+                                    )}
+                                </div>
+
                                 {order.observations && (
-                                    <div className="bg-gray-100 p-4 rounded-lg text-sm text-gray-600 italic">
+                                    <div className="bg-gray-100 p-4 rounded-lg text-sm text-gray-600 italic border border-gray-200">
+                                        <span className="font-semibold block mb-1 not-italic text-gray-700">Observações:</span>
                                         "{order.observations}"
                                     </div>
                                 )}
@@ -537,11 +584,18 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                                 <History className="h-5 w-5 text-gray-400" /> Histórico de Processo
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Initial Checklist is always first */}
+                                <CreationChecklist />
+
                                 {order.checklist_photolith && <ChecklistHistoryItem title="1. Fotolito & Arte" data={order.checklist_photolith} />}
                                 {order.checklist_arrival && <ChecklistHistoryItem title="2. Conferência de Chegada" data={order.checklist_arrival} />}
                                 {order.checklist_customization && <ChecklistHistoryItem title="3. Conferência de Personalização" data={order.checklist_customization} />}
+
+                                {/* Fallback if nothing else */}
                                 {!order.checklist_photolith && !order.checklist_arrival && !order.checklist_customization && (
-                                    <div className="text-gray-400 italic">Nenhuma atividade registrada.</div>
+                                    <div className="flex items-center justify-center p-6 border-2 border-dashed border-gray-200 rounded-lg col-span-1 md:col-span-2 text-gray-400 italic">
+                                        Aguardando próximas etapas...
+                                    </div>
                                 )}
                             </div>
                         </div>

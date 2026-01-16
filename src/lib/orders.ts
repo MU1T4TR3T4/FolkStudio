@@ -163,6 +163,13 @@ export async function createOrder(order: Partial<Order>): Promise<Order | null> 
 
         if (error) {
             console.warn("Supabase insert error (continuing to localStorage):", error);
+            // Notify user of offline mode
+            if (typeof window !== 'undefined') {
+                // Dynamic import to avoid SSR issues if simple toast not available
+                import('sonner').then(({ toast }) => {
+                    toast.warning("Modo Offline: Pedido salvo apenas neste dispositivo. Verifique a conexão ou permissões.");
+                });
+            }
             throw error;
         }
 

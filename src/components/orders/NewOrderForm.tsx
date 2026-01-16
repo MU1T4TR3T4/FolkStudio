@@ -157,7 +157,7 @@ export function NewOrderForm({ open, onClose, onSuccess, initialData }: NewOrder
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-            <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto bg-white">
                 <DialogHeader>
                     <div className="flex justify-between items-center mr-6">
                         <DialogTitle className="text-2xl font-bold">Novo Pedido</DialogTitle>
