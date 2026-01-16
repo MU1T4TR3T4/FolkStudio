@@ -96,19 +96,29 @@ export function NewOrderForm({ open, onClose, onSuccess, initialData }: NewOrder
             const orderId = isEdit ? initialData.id : crypto.randomUUID();
 
             // Upload Files
-            let uploadedImageUrl = image; // Default to existing if not changed
+            let uploadedImageUrl = image; // Default to existing if not changed (e.g. edit mode with existing URL)
             let uploadedPdfUrl = pdf;
 
             if (imageFile) {
                 const { uploadFile } = await import('@/lib/storage');
                 const url = await uploadFile(imageFile, `mockups/${orderId}-${Date.now()}.png`);
-                if (url) uploadedImageUrl = url;
+                if (!url) throw new Error("Falha no upload da imagem do Mockup. Tente novamente.");
+                uploadedImageUrl = url;
+            } else if (image && image.startsWith('data:')) {
+                // CASE: User kept the preview (base64) but somehow we don't have the file object? 
+                // This shouldn't happen in normal flow, but if it does, BLOCK IT.
+                // We cannot send base64 to DB.
+                throw new Error("Erro: Arquivo de imagem perdido. Por favor, selecione a imagem novamente.");
             }
 
             if (pdfFile) {
                 const { uploadFile } = await import('@/lib/storage');
                 const url = await uploadFile(pdfFile, `pdfs/${orderId}-${Date.now()}.pdf`);
-                if (url) uploadedPdfUrl = url;
+                if (!url) throw new Error("Falha no upload do PDF. Tente novamente.");
+                uploadedPdfUrl = url;
+            } else if (pdf && pdf.length > 500 && !pdf.startsWith('http')) {
+                // Detect probable Base64 or non-url
+                throw new Error("Erro: Arquivo PDF inválido ou não enviado. Selecione novamente.");
             }
 
             // Create Order Object

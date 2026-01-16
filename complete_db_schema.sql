@@ -44,3 +44,17 @@ CREATE POLICY "Public View" ON orders FOR SELECT TO public USING (true);
 CREATE POLICY "Public Insert" ON orders FOR INSERT TO public WITH CHECK (true);
 CREATE POLICY "Public Update" ON orders FOR UPDATE TO public USING (true);
 CREATE POLICY "Public Delete" ON orders FOR DELETE TO public USING (true);
+
+-- ==========================================
+-- 8. SETUP STORAGE (BUCKET)
+-- ==========================================
+-- Attempt to create the 'orders' bucket for file uploads
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('orders', 'orders', true) 
+ON CONFLICT (id) DO NOTHING;
+
+-- STORAGE POLICIES (Allow public access for simplicity, matching the app's auth style)
+-- Allow public SELECT
+CREATE POLICY "Public Access" ON storage.objects FOR SELECT TO public USING ( bucket_id = 'orders' );
+-- Allow public INSERT
+CREATE POLICY "Public Upload" ON storage.objects FOR INSERT TO public WITH CHECK ( bucket_id = 'orders' );
