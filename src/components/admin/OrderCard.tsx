@@ -14,6 +14,11 @@ interface OrderCardProps {
         ad4?: number;
         kanban_stage?: string;
         status?: string;
+        // DB snake_case mappings
+        created_at?: string;
+        updated_at?: string;
+        customer_name?: string;
+        image_url?: string; // Fallback for imageUrl
     };
     onClick: () => void;
 }
@@ -21,22 +26,16 @@ interface OrderCardProps {
 export default function OrderCard({ order, onClick }: OrderCardProps) {
     const isReturned = order.kanban_stage === 'returned' || order.status === 'returned';
 
-    const getSizesText = () => {
-        const sizes = Object.entries(order.sizes || {})
-            .filter(([_, qty]) => qty > 0)
-            .map(([size, qty]) => `${size}(${qty})`)
-            .join(", ");
-        return sizes || "N/A";
-    };
+    // Image fallback (DB uses image_url, App uses imageUrl)
+    const displayImage = order.imageUrl || (order as any).image_url;
 
-    const getColorName = (color: string) => {
-        const names: Record<string, string> = {
-            white: "Branco",
-            black: "Preto",
-            blue: "Azul"
-        };
-        return names[color] || color;
-    };
+    // Days in stage calculation
+    // Ideally we would track "entered_stage_at", but for now we use updated_at as proxy for last movement
+    const lastUpdate = new Date(order.updated_at || order.created_at || order.createdAt || new Date());
+    const daysInStage = Math.floor((new Date().getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Date formatting (Handle DB ISO string or App Date string)
+    const orderDate = new Date(order.created_at || order.createdAt || new Date()).toLocaleDateString("pt-BR");
 
     return (
         <div
@@ -52,50 +51,48 @@ export default function OrderCard({ order, onClick }: OrderCardProps) {
 
             {/* Imagem */}
             <div className={`aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden ${isReturned ? 'opacity-90' : ''}`}>
-                <img
-                    src={order.imageUrl}
-                    alt="Mockup"
-                    className="w-full h-full object-contain"
-                />
+                {displayImage ? (
+                    <img
+                        src={displayImage}
+                        alt="Mockup"
+                        className="w-full h-full object-contain"
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                        <Package className="h-10 w-10" />
+                    </div>
+                )}
             </div>
 
             {/* Informações */}
             <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-gray-400" />
-                    <span className="text-xs font-mono text-gray-500">
-                        #{order.id.slice(0, 8)}
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                        #{order.id.slice(0, 8).toUpperCase()}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                        {orderDate}
                     </span>
                 </div>
 
-                <div className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Cor:</span>
-                        <span className="font-medium">{getColorName(order.color)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Qtd:</span>
-                        <span className="font-medium">{order.totalQty}</span>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                        {getSizesText()}
-                    </div>
-                    {/* Adicionais */}
-                    {(order.ad1 || order.ad2 || order.ad3 || order.ad4) ? (
-                        <div className="flex flex-wrap gap-1 mt-1 pt-1 border-t border-gray-50">
-                            {order.ad1 ? <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">AD1: R${order.ad1}</span> : null}
-                            {order.ad2 ? <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">AD2: R${order.ad2}</span> : null}
-                            {order.ad3 ? <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">AD3: R${order.ad3}</span> : null}
-                            {order.ad4 ? <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">AD4: R${order.ad4}</span> : null}
-                        </div>
-                    ) : null}
-                </div>
-
-                <div className="pt-2 border-t border-gray-100">
-                    <p className="text-xs text-gray-400">
-                        {new Date(order.createdAt).toLocaleDateString("pt-BR")}
+                <div>
+                    <p className="font-semibold text-gray-900 text-sm line-clamp-1">
+                        {order.customer_name || (order as any).clientName || "Cliente"}
+                    </p>
+                    <p className="text-xs text-blue-600 font-medium">
+                        {daysInStage === 0 ? "Hoje" : `${daysInStage} dia${daysInStage > 1 ? 's' : ''}`} na etapa
                     </p>
                 </div>
+
+                {/* Adicionais */}
+                {(order.ad1 || order.ad2 || order.ad3 || order.ad4) ? (
+                    <div className="flex flex-wrap gap-1 mt-1 pt-1 border-t border-gray-50">
+                        {order.ad1 ? <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">AD1</span> : null}
+                        {order.ad2 ? <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">AD2</span> : null}
+                        {order.ad3 ? <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">AD3</span> : null}
+                        {order.ad4 ? <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">AD4</span> : null}
+                    </div>
+                ) : null}
             </div>
         </div>
     );
