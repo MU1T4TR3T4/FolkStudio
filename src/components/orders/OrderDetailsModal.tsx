@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Download, CheckCircle, AlertCircle, Package, Clock, Archive, ArrowRight, MessageSquare, Paperclip, ListTodo, History, Eye, Upload, FileText, XCircle, User, Calendar, Edit } from "lucide-react";
+import { X, Download, CheckCircle, AlertCircle, Package, Clock, Archive, ArrowRight, MessageSquare, Paperclip, ListTodo, History, Eye, Upload, FileText, XCircle, User, Calendar, Edit, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { saveImage, getImage } from "@/lib/storage";
@@ -152,49 +152,63 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
     }
 
     function handleAdvanceStage() {
-        if (!onUpdateStatus || !onUpdateOrder) return;
+        if (!onUpdateOrder) return;
         const currentStage = order.kanban_stage || 'waiting_confirmation';
         let nextStage = '';
+
+        // Prepare metadata
         const userMeta = {
             checked_by: currentUser?.name || 'Sistema',
             checked_at: new Date().toISOString()
         };
 
+        let updates: Partial<Order> = {};
+
         if (currentStage === 'waiting_confirmation') {
             nextStage = 'photolith';
-            // Auto-close on approval as requested
             setTimeout(() => onClose(), 800);
             toast.success("Pedido aprovado! Movendo para produção...");
         }
         else if (currentStage === 'photolith') {
             if (!canAdvanceFromPhotolith()) return toast.error("Checklist incompleto ou fotolito faltando!");
-            onUpdateOrder({
-                ...order,
+            updates = {
                 photolith_status: true,
                 checklist_photolith: { items: checklistPhotolith, ...userMeta }
-            });
+            };
             nextStage = 'waiting_arrival';
         }
         else if (currentStage === 'waiting_arrival') {
             if (!canAdvanceFromArrival()) return toast.error("Checklist de chegada incompleto!");
-            onUpdateOrder({ ...order, checklist_arrival: { items: checklistArrival, ...userMeta } });
+            updates = { checklist_arrival: { items: checklistArrival, ...userMeta } };
             nextStage = 'customization';
         }
         else if (currentStage === 'customization') {
             if (!canAdvanceFromCustomization()) return toast.error("Checklist de personalização incompleto!");
-            onUpdateOrder({ ...order, checklist_customization: { items: checklistCustomization, ...userMeta } });
+            updates = { checklist_customization: { items: checklistCustomization, ...userMeta } };
             nextStage = 'delivery';
         }
         else if (currentStage === 'delivery') {
             if (!canFinalizeDelivery()) return toast.error("Foto final ou assinatura faltando!");
-            onUpdateOrder({ ...order, delivered_at: new Date().toISOString() });
+            updates = { delivered_at: new Date().toISOString() };
             nextStage = 'finalized';
         }
 
         if (nextStage) {
-            onUpdateStatus(order.id, nextStage);
+            // SINGLE UPDATE to prevent race conditions
+            onUpdateOrder({
+                ...order,
+                ...updates,
+                kanban_stage: nextStage as any
+            });
+
+            // Also call status updater if available for side-effects (like logging) 
+            // BUT ensure we don't revert local state. 
+            // Since onUpdateStatus in parent refreshes state usually optimistically, 
+            // we should rely on onUpdateOrder being the primary source of truth here.
+            // If onUpdateStatus is strictly for logging, we might need a separate 'logStatus' prop or function.
+            // For now, the Order update is the critical part for the history.
+
             toast.success("Etapa avançada com sucesso!");
-            // Auto-close for all stages
             setTimeout(() => onClose(), 500);
         }
     }
