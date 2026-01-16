@@ -32,6 +32,7 @@ export interface Order {
     ad4: number;
     // Local fields for compatibility
     imageUrl?: string;
+    image_url?: string; // DB field
     backImageUrl?: string;
     logoFrontUrl?: string;
     logoBackUrl?: string;
@@ -39,6 +40,7 @@ export interface Order {
     designBack?: any;
 
     pdfUrl?: string;
+    pdf_url?: string; // DB field
     created_by?: string;
 
     // Kanban V2

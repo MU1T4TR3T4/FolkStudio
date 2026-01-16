@@ -63,8 +63,8 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
             resolve(order.photolith_url),
             resolve(order.final_product_url),
             resolve(order.client_signature_url),
-            resolve(order.pdfUrl),
-            resolve(order.imageUrl),
+            resolve(order.pdfUrl || (order as any).pdf_url),
+            resolve(order.imageUrl || (order as any).image_url),
         ]);
 
         setFiles({
@@ -117,22 +117,20 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
         const reader = new FileReader();
         reader.onload = async (event) => {
             const base64 = event.target?.result as string;
-            const fileId = crypto.randomUUID();
-            const key = `${type}-${order.id}-${fileId}`;
-            await saveImage(key, base64);
-            const url = `idb:${key}`;
+            // Removed IDB saving to ensure files are shared via DB (Base64)
+            const url = base64;
 
             if (onUpdateOrder) {
                 if (type === 'photolith') onUpdateOrder({ ...order, photolith_url: url });
                 else if (type === 'final') onUpdateOrder({ ...order, final_product_url: url });
                 else if (type === 'signature') onUpdateOrder({ ...order, client_signature_url: url });
                 // NEW: Handle Mockup and PDF updates
-                else if (type === 'mockup') onUpdateOrder({ ...order, imageUrl: url, image_url: url } as any); // Update both for compatibility
+                else if (type === 'mockup') onUpdateOrder({ ...order, imageUrl: url, image_url: url } as any);
                 else if (type === 'pdf') onUpdateOrder({ ...order, pdfUrl: url, pdf_url: url } as any);
             }
             // Update local resolved state
             setFiles(prev => ({ ...prev, [type]: base64 }));
-            toast.success("Arquivo carregado com sucesso!");
+            toast.success("Arquivo processado para envio!");
         };
         reader.readAsDataURL(file);
     }

@@ -133,8 +133,8 @@ export function NewOrderForm({ open, onClose, onSuccess, initialData }: NewOrder
                 status: "pending",
                 kanban_stage: isEdit ? "waiting_confirmation" : "waiting_confirmation", // Reset to waiting_confirmation on edit?
                 created_at: isEdit ? initialData.created_at : new Date().toISOString(), // Keep created_at if edit
-                imageUrl: image.startsWith('data:') ? `idb:order-front-${orderId}` : image,
-                pdfUrl: pdf.startsWith('data:') ? `idb:order-pdf-${orderId}` : pdf,
+                imageUrl: image, // Send Base64 directly
+                pdfUrl: pdf,     // Send Base64 directly
             };
 
             if (isEdit) {
