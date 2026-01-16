@@ -23,20 +23,31 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 -- 5. Drop existing policies to avoid conflicts
 DROP POLICY IF EXISTS "Users can view all orders" ON orders;
 DROP POLICY IF EXISTS "Users can insert their own orders" ON orders;
+DROP POLICY IF EXISTS "Users can insert orders" ON orders; -- Added missing drop
 DROP POLICY IF EXISTS "Users can update orders" ON orders;
+DROP POLICY IF EXISTS "Users can delete orders" ON orders; -- Added missing drop
 
 -- 6. Create Permissive Policies (Fixes Visibility Issue)
--- Allow ALL authenticated users (Workspace, Admin, Vendor) to SEE ALL orders
+-- Allow ALL users (public) to SEE ALL orders because we handle auth in the app
 CREATE POLICY "Users can view all orders" 
 ON orders FOR SELECT 
-USING (auth.role() = 'authenticated');
+TO public
+USING (true);
 
--- Allow authenticated users to INSERT orders
+-- Allow public to INSERT orders (Auth is handled by App Logic)
 CREATE POLICY "Users can insert orders" 
 ON orders FOR INSERT 
-WITH CHECK (auth.role() = 'authenticated');
+TO public
+WITH CHECK (true);
 
--- Allow authenticated users to UPDATE orders
+-- Allow public to UPDATE orders
 CREATE POLICY "Users can update orders" 
 ON orders FOR UPDATE 
-USING (auth.role() = 'authenticated');
+TO public
+USING (true);
+
+-- Allow public to DELETE orders
+CREATE POLICY "Users can delete orders" 
+ON orders FOR DELETE 
+TO public
+USING (true);

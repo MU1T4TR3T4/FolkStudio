@@ -106,6 +106,7 @@ export function getCurrentUser(): User | null {
   try {
     const sessionData = localStorage.getItem(SESSION_KEY);
     if (!sessionData) {
+      console.log('DEBUG: No session found in localStorage');
       return null;
     }
 
