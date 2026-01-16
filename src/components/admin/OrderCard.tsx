@@ -1,4 +1,6 @@
-import { Package, AlertCircle } from "lucide-react";
+import { Package, AlertCircle, User } from "lucide-react";
+import { getUserById } from "@/lib/auth";
+import { useState, useEffect } from "react";
 
 interface OrderCardProps {
     order: {
@@ -19,23 +21,32 @@ interface OrderCardProps {
         updated_at?: string;
         customer_name?: string;
         image_url?: string; // Fallback for imageUrl
+        created_by?: string;
     };
     onClick: () => void;
 }
 
 export default function OrderCard({ order, onClick }: OrderCardProps) {
     const isReturned = order.kanban_stage === 'returned' || order.status === 'returned';
+    const [sellerName, setSellerName] = useState<string>("");
 
     // Image fallback (DB uses image_url, App uses imageUrl)
     const displayImage = order.imageUrl || (order as any).image_url;
 
     // Days in stage calculation
-    // Ideally we would track "entered_stage_at", but for now we use updated_at as proxy for last movement
     const lastUpdate = new Date(order.updated_at || order.created_at || order.createdAt || new Date());
     const daysInStage = Math.floor((new Date().getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24));
 
     // Date formatting (Handle DB ISO string or App Date string)
     const orderDate = new Date(order.created_at || order.createdAt || new Date()).toLocaleDateString("pt-BR");
+
+    useEffect(() => {
+        if (order.created_by) {
+            getUserById(order.created_by).then(user => {
+                if (user) setSellerName(user.full_name);
+            });
+        }
+    }, [order.created_by]);
 
     return (
         <div
@@ -79,9 +90,16 @@ export default function OrderCard({ order, onClick }: OrderCardProps) {
                     <p className="font-semibold text-gray-900 text-sm line-clamp-1">
                         {order.customer_name || (order as any).clientName || "Cliente"}
                     </p>
-                    <p className="text-xs text-blue-600 font-medium">
-                        {daysInStage === 0 ? "Hoje" : `${daysInStage} dia${daysInStage > 1 ? 's' : ''}`} na etapa
-                    </p>
+                    <div className="flex justify-between items-center mt-1">
+                        <p className="text-xs text-blue-600 font-medium">
+                            {daysInStage === 0 ? "Hoje" : `${daysInStage} dia${daysInStage > 1 ? 's' : ''}`} na etapa
+                        </p>
+                        {sellerName && (
+                            <p className="text-[10px] text-gray-500 flex items-center gap-1" title={`Vendedor: ${sellerName}`}>
+                                <User className="h-3 w-3" /> {sellerName.split(' ')[0]}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Adicionais */}

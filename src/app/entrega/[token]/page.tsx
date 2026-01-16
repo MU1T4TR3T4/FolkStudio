@@ -204,7 +204,7 @@ export default function DeliverySignaturePage() {
                                 </Button>
                             </div>
                         ) : (
-                            <Button onClick={() => setIsSignModalOpen(true)} className="w-full bg-[#7D4CDB] hover:bg-[#6b3bb5] text-white h-12 text-lg flex justify-center items-center">
+                            <Button onClick={() => setIsSignModalOpen(true)} className="w-full bg-[#7D4CDB] hover:bg-[#6b3bb5] text-white h-12 text-lg flex items-center justify-center">
                                 <PenTool className="mr-2 h-5 w-5" /> Assinar Recebimento
                             </Button>
                         )}

@@ -17,6 +17,8 @@ interface OrderDetailsModalProps {
     readOnly?: boolean;
 }
 
+import { getCurrentUser } from "@/lib/auth";
+
 export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrder, onEditOrder, onDeleteOrder, readOnly = false }: OrderDetailsModalProps) {
     const [returnReason, setReturnReason] = useState("");
     const [showReturnInput, setShowReturnInput] = useState(false);
@@ -36,16 +38,14 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
         mockup: null,
     });
 
-    const [currentUser, setCurrentUser] = useState<{ name: string } | null>(null);
+    const [currentUser, setCurrentUser] = useState<any>(null);
 
     // Initial Load & User
     useEffect(() => {
         const loadUser = () => {
-            try {
-                const u = localStorage.getItem('folk_user');
-                if (u) setCurrentUser(JSON.parse(u));
-                else setCurrentUser({ name: 'Usuário' });
-            } catch { setCurrentUser({ name: 'Usuário' }); }
+            const user = getCurrentUser();
+            if (user) setCurrentUser(user);
+            else setCurrentUser({ full_name: 'Usuário' });
         };
         loadUser();
         resolveImages();
@@ -158,7 +158,7 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
 
         // Prepare metadata
         const userMeta = {
-            checked_by: currentUser?.name || 'Sistema',
+            checked_by: currentUser?.full_name || 'Sistema',
             checked_at: new Date().toISOString()
         };
 
