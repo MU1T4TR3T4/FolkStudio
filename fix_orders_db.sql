@@ -16,6 +16,9 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS checklist_customization JSONB;
 -- 3. Boolean/Status logs
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS photolith_status BOOLEAN DEFAULT FALSE;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_reason TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_token TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_signature_url TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;
 
 -- 4. Enable Row Level Security (RLS)
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
