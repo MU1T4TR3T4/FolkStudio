@@ -43,35 +43,17 @@ export function NewOrderForm({ open, onClose, onSuccess, initialData }: NewOrder
     // Zoom Preview State
     const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-    // ... handleImageUpload, handlePdfUpload ... (unchanged)
+    // File Objects State (for upload)
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [pdfFile, setPdfFile] = useState<File | null>(null);
+
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setImageFile(file); // Store file for upload
             const reader = new FileReader();
             reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    const MAX_SIZE = 1200;
-                    if (width > MAX_SIZE || height > MAX_SIZE) {
-                        if (width > height) {
-                            height *= MAX_SIZE / width;
-                            width = MAX_SIZE;
-                        } else {
-                            width *= MAX_SIZE / height;
-                            height = MAX_SIZE;
-                        }
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx?.drawImage(img, 0, 0, width, height);
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-                    setImage(compressedBase64);
-                };
-                img.src = event.target?.result as string;
+                setImage(event.target?.result as string); // Preview only
             };
             reader.readAsDataURL(file);
         }
@@ -80,11 +62,8 @@ export function NewOrderForm({ open, onClose, onSuccess, initialData }: NewOrder
     const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file && file.type === "application/pdf") {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setPdf(event.target?.result as string);
-            };
-            reader.readAsDataURL(file);
+            setPdfFile(file); // Store file for upload
+            setPdf(file.name); // Just show name or dummy
         } else {
             toast.error("Por favor, selecione um arquivo PDF válido.");
         }
@@ -96,11 +75,11 @@ export function NewOrderForm({ open, onClose, onSuccess, initialData }: NewOrder
             toast.error("Selecione um cliente.");
             return;
         }
-        if (!pdf) {
+        if (!pdfFile && !pdf) { // Require file or existing url (if edit, though edit logic is tricky here)
             toast.error("O PDF da Ordem de Compra é obrigatório.");
             return;
         }
-        if (!image) {
+        if (!imageFile && !image) {
             toast.error("A imagem do mockup é obrigatória.");
             return;
         }
@@ -113,13 +92,24 @@ export function NewOrderForm({ open, onClose, onSuccess, initialData }: NewOrder
 
         setSaving(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 500));
-
             const isEdit = !!initialData?.id;
             const orderId = isEdit ? initialData.id : crypto.randomUUID();
 
-            if (image && !image.startsWith('idb:') && image !== initialData?.imageUrl) await saveImage(`order-front-${orderId}`, image);
-            if (pdf && !pdf.startsWith('idb:') && pdf !== initialData?.pdfUrl) await saveImage(`order-pdf-${orderId}`, pdf);
+            // Upload Files
+            let uploadedImageUrl = image; // Default to existing if not changed
+            let uploadedPdfUrl = pdf;
+
+            if (imageFile) {
+                const { uploadFile } = await import('@/lib/storage');
+                const url = await uploadFile(imageFile, `mockups/${orderId}-${Date.now()}.png`);
+                if (url) uploadedImageUrl = url;
+            }
+
+            if (pdfFile) {
+                const { uploadFile } = await import('@/lib/storage');
+                const url = await uploadFile(pdfFile, `pdfs/${orderId}-${Date.now()}.pdf`);
+                if (url) uploadedPdfUrl = url;
+            }
 
             // Create Order Object
             const dbOrder: any = {
@@ -133,8 +123,11 @@ export function NewOrderForm({ open, onClose, onSuccess, initialData }: NewOrder
                 status: "pending",
                 kanban_stage: isEdit ? "waiting_confirmation" : "waiting_confirmation", // Reset to waiting_confirmation on edit?
                 created_at: isEdit ? initialData.created_at : new Date().toISOString(), // Keep created_at if edit
-                imageUrl: image, // Send Base64 directly
-                pdfUrl: pdf,     // Send Base64 directly
+                imageUrl: uploadedImageUrl,
+                pdfUrl: uploadedPdfUrl,
+                // DB Mappings
+                image_url: uploadedImageUrl,
+                pdf_url: uploadedPdfUrl
             };
 
             if (isEdit) {

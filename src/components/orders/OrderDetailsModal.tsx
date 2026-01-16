@@ -114,25 +114,26 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const base64 = event.target?.result as string;
-            // Removed IDB saving to ensure files are shared via DB (Base64)
-            const url = base64;
+        const { uploadFile } = await import('@/lib/storage');
+        const folder = type === 'pdf' ? 'pdfs' : 'images';
+        const url = await uploadFile(file, `${folder}/${order.id}-${type}-${Date.now()}.${type === 'pdf' ? 'pdf' : 'png'}`);
 
-            if (onUpdateOrder) {
-                if (type === 'photolith') onUpdateOrder({ ...order, photolith_url: url });
-                else if (type === 'final') onUpdateOrder({ ...order, final_product_url: url });
-                else if (type === 'signature') onUpdateOrder({ ...order, client_signature_url: url });
-                // NEW: Handle Mockup and PDF updates
-                else if (type === 'mockup') onUpdateOrder({ ...order, imageUrl: url, image_url: url } as any);
-                else if (type === 'pdf') onUpdateOrder({ ...order, pdfUrl: url, pdf_url: url } as any);
-            }
-            // Update local resolved state
-            setFiles(prev => ({ ...prev, [type]: base64 }));
-            toast.success("Arquivo processado para envio!");
-        };
-        reader.readAsDataURL(file);
+        if (!url) {
+            toast.error("Erro ao fazer upload do arquivo.");
+            return;
+        }
+
+        if (onUpdateOrder) {
+            if (type === 'photolith') onUpdateOrder({ ...order, photolith_url: url });
+            else if (type === 'final') onUpdateOrder({ ...order, final_product_url: url });
+            else if (type === 'signature') onUpdateOrder({ ...order, client_signature_url: url });
+            else if (type === 'mockup') onUpdateOrder({ ...order, imageUrl: url, image_url: url } as any);
+            else if (type === 'pdf') onUpdateOrder({ ...order, pdfUrl: url, pdf_url: url } as any);
+        }
+
+        // Update local resolved state with URL (Storage URL)
+        setFiles(prev => ({ ...prev, [type]: url }));
+        toast.success("Arquivo enviado com sucesso!");
     }
 
     // Logic to Check Advance
