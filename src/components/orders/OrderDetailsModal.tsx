@@ -590,48 +590,73 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                                                 <div>
                                                     <label className="block font-medium mb-2">Foto do Produto *</label>
                                                     <input type="file" onChange={e => handleUpload(e, 'final')} className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
-                                                    {files.final && (
-                                                        <div className="mt-3">
-                                                            <img src={files.final} className="mb-2 h-32 rounded object-cover" />
-
-                                                            {/* Signature Link Button */}
-                                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                                                <p className="text-sm text-blue-800 font-medium mb-2">Link de Assinatura para o Cliente:</p>
-                                                                <div className="flex gap-2">
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        className="flex-1 bg-white border-blue-300 text-blue-700 hover:bg-blue-100"
-                                                                        onClick={async () => {
-                                                                            // Generate token if missing
-                                                                            let token = order.delivery_token;
-                                                                            if (!token) {
-                                                                                token = crypto.randomUUID();
-                                                                                if (onUpdateOrder) {
-                                                                                    onUpdateOrder({ ...order, delivery_token: token });
-                                                                                }
-                                                                            }
-
-                                                                            const link = `${window.location.origin}/entrega/${token}`;
-                                                                            await navigator.clipboard.writeText(link);
-                                                                            toast.success("Link copiado! Envie para o cliente.");
-                                                                        }}
-                                                                    >
-                                                                        <Copy className="h-4 w-4 mr-2" /> Copiar Link de Assinatura
-                                                                    </Button>
-                                                                </div>
-                                                                <p className="text-xs text-blue-600 mt-2">Envie este link para o cliente conferir a foto e assinar o recebimento.</p>
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                    {files.final && <img src={files.final} className="mt-2 h-32 rounded object-cover" />}
                                                 </div>
                                                 <div>
                                                     <label className="block font-medium mb-2">Assinatura Cliente *</label>
-                                                    <div className="text-sm text-gray-500 mb-2">Pode ser assinada pelo link acima ou anexada manualmente.</div>
-                                                    <input type="file" onChange={e => handleUpload(e, 'signature')} className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
+
+                                                    {/* 1. Show Signature if Present */}
                                                     {(files.signature || order.client_signature_url) && (
-                                                        <div className="mt-2 text-center border p-2 rounded bg-green-50 border-green-200">
-                                                            <p className="text-xs font-bold text-green-700 mb-1">Assinatura Recebida</p>
-                                                            <img src={files.signature || order.client_signature_url} className="h-16 mx-auto object-contain" />
+                                                        <div className="mb-4 text-center border p-4 rounded-lg bg-green-50 border-green-200">
+                                                            <p className="text-sm font-bold text-green-700 mb-2 flex items-center justify-center gap-2">
+                                                                <CheckCircle className="h-4 w-4" /> Assinatura Recebida
+                                                            </p>
+                                                            <img
+                                                                src={files.signature || order.client_signature_url || ''}
+                                                                className="h-24 mx-auto object-contain bg-white rounded border border-green-100"
+                                                            />
+                                                            <p className="text-xs text-green-600 mt-2">Assinado digitalmente pelo cliente</p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 2. Link Generation / Copy Button */}
+                                                    {!(files.signature || order.client_signature_url) ? (
+                                                        <div className="space-y-3">
+                                                            <div className="text-sm text-gray-500 mb-2">
+                                                                Para coletar a assinatura, gere um link e envie ao cliente.
+                                                            </div>
+                                                            <Button
+                                                                variant="outline"
+                                                                className="w-full h-12 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-300 transition-all flex items-center justify-center gap-2"
+                                                                onClick={async () => {
+                                                                    // Generate token if missing
+                                                                    let token = order.delivery_token;
+                                                                    if (!token) {
+                                                                        token = crypto.randomUUID();
+                                                                        if (onUpdateOrder) {
+                                                                            onUpdateOrder({ ...order, delivery_token: token });
+                                                                        }
+                                                                    }
+
+                                                                    const link = `${window.location.origin}/entrega/${token}`;
+                                                                    await navigator.clipboard.writeText(link);
+                                                                    toast.success("Link gerado e copiado! Envie para o cliente.");
+                                                                }}
+                                                            >
+                                                                <Copy className="h-4 w-4" />
+                                                                {order.delivery_token ? "Copiar Link de Assinatura" : "Gerar Link de Assinatura"}
+                                                            </Button>
+                                                            <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                                                                <AlertCircle className="h-3 w-3" />
+                                                                O cliente verá a foto do produto e poderá assinar na tela do celular.
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center">
+                                                            <button
+                                                                className="text-xs text-gray-400 underline hover:text-gray-600"
+                                                                onClick={() => {
+                                                                    if (confirm("Deseja gerar um novo link? A assinatura atual será mantida até que uma nova seja feita.")) {
+                                                                        // Logic to copy link again if needed even if signed
+                                                                        const token = order.delivery_token || crypto.randomUUID();
+                                                                        const link = `${window.location.origin}/entrega/${token}`;
+                                                                        navigator.clipboard.writeText(link);
+                                                                        toast.success("Link copiado novamente.");
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Precisa do link novamente?
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </div>
