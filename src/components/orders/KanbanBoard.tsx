@@ -17,6 +17,17 @@ export function KanbanBoard({ orders, onOrderClick }: KanbanBoardProps) {
     return (
         <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-250px)]">
             <KanbanColumn
+                title="Devolvidos"
+                count={getOrdersByStatus("returned").length}
+                icon={Archive}
+                color="red"
+            >
+                {getOrdersByStatus("returned").map(order => (
+                    <OrderCard key={order.id} order={order} onClick={() => onOrderClick(order)} />
+                ))}
+            </KanbanColumn>
+
+            <KanbanColumn
                 title="1. Aguardando Confirmação"
                 count={getOrdersByStatus("waiting_confirmation").length}
                 icon={Clock}
@@ -42,7 +53,7 @@ export function KanbanBoard({ orders, onOrderClick }: KanbanBoardProps) {
                 title="3. Aguardando Chegada"
                 count={getOrdersByStatus("waiting_arrival").length}
                 icon={Package}
-                color="orange" // Changed to orange to differentiate
+                color="orange"
             >
                 {getOrdersByStatus("waiting_arrival").map(order => (
                     <OrderCard key={order.id} order={order} onClick={() => onOrderClick(order)} />
@@ -78,16 +89,6 @@ export function KanbanBoard({ orders, onOrderClick }: KanbanBoardProps) {
                 color="gray"
             >
                 {getOrdersByStatus("finalized").map(order => (
-                    <OrderCard key={order.id} order={order} onClick={() => onOrderClick(order)} />
-                ))}
-            </KanbanColumn>
-            <KanbanColumn
-                title="Devolvidos"
-                count={getOrdersByStatus("returned").length}
-                icon={Archive}
-                color="red"
-            >
-                {getOrdersByStatus("returned").map(order => (
                     <OrderCard key={order.id} order={order} onClick={() => onOrderClick(order)} />
                 ))}
             </KanbanColumn>

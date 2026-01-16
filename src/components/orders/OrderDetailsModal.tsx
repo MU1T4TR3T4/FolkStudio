@@ -427,24 +427,49 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
                             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                                 <ListTodo className="h-5 w-5 text-blue-600" />
-                                {order.kanban_stage === 'waiting_confirmation' ? 'Detalhes do Pedido' : `Etapa Atual: ${stages.find(s => s.id === order.kanban_stage)?.label}`}
+                                {order.kanban_stage === 'waiting_confirmation' ? 'Detalhes do Pedido' :
+                                    order.kanban_stage === 'returned' ? 'ATENÇÃO: DEVOLVIDO' :
+                                        `Etapa Atual: ${stages.find(s => s.id === order.kanban_stage)?.label || order.kanban_stage}`}
                             </h3>
 
                             {/* Vendor/ReadOnly Logic */}
                             {readOnly ? (
                                 <div>
                                     {isEditableByVendor ? (
-                                        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg flex flex-col md:flex-row items-center justify-between gap-4">
-                                            <div>
-                                                <p className="font-medium text-blue-800">Este pedido ainda não foi aprovado.</p>
-                                                <p className="text-sm text-blue-600">Você pode editá-lo para corrigir informações.</p>
-                                            </div>
-                                            {onEditOrder && (
-                                                <Button onClick={() => onEditOrder(order)} className="whitespace-nowrap gap-2 bg-blue-600 hover:bg-blue-700 text-white">
-                                                    <Edit className="h-4 w-4" /> Editar Pedido
-                                                </Button>
+                                        <>
+                                            {order.kanban_stage === 'returned' ? (
+                                                <div className="bg-red-50 border border-red-200 p-6 rounded-lg">
+                                                    <div className="flex items-center gap-3 text-red-800 font-bold text-lg mb-2">
+                                                        <AlertCircle className="h-6 w-6" />
+                                                        Correção Necessária
+                                                    </div>
+                                                    <div className="bg-white p-4 rounded border border-red-100 mb-4 text-gray-800 shadow-sm">
+                                                        <span className="font-semibold text-red-600 block mb-1">Motivo da devolução:</span>
+                                                        "{order.return_reason || "Sem motivo especificado"}"
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <p className="text-sm text-red-700 font-medium">Edite o pedido para corrigir o problema e reenvie.</p>
+                                                        {onEditOrder && (
+                                                            <Button onClick={() => onEditOrder(order)} variant="destructive" className="gap-2">
+                                                                <Edit className="h-4 w-4" /> Editar e Corrigir
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg flex flex-col md:flex-row items-center justify-between gap-4">
+                                                    <div>
+                                                        <p className="font-medium text-blue-800">Este pedido ainda não foi aprovado.</p>
+                                                        <p className="text-sm text-blue-600">Você pode editá-lo para corrigir informações.</p>
+                                                    </div>
+                                                    {onEditOrder && (
+                                                        <Button onClick={() => onEditOrder(order)} className="whitespace-nowrap gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+                                                            <Edit className="h-4 w-4" /> Editar Pedido
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             )}
-                                        </div>
+                                        </>
                                     ) : (
                                         <div className="bg-gray-50 border border-gray-200 text-gray-600 p-4 rounded-lg flex items-center gap-2">
                                             <Eye className="h-5 w-5" />
