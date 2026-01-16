@@ -147,10 +147,13 @@ export async function createOrder(order: Partial<Order>): Promise<Order | null> 
             ad2: order.ad2,
             ad3: order.ad3,
             ad4: order.ad4,
-            logoBackUrl: order.logoBackUrl,
-            designFront: order.designFront,
-            designBack: order.designBack,
+            // Mapped to snake_case for DB
+            logo_back_url: order.logoBackUrl,
+            design_front: order.designFront,
+            design_back: order.designBack,
             pdf_url: order.pdfUrl,
+            image_url: order.imageUrl?.startsWith('idb:') ? null : order.imageUrl, // Send image URL if not local only
+
             // Kanban V2 Defaults
             kanban_stage: order.kanban_stage || 'waiting_confirmation',
         };

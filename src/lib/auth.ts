@@ -113,11 +113,16 @@ export function getCurrentUser(): User | null {
     const session: AuthSession = JSON.parse(sessionData);
 
     // Verificar se sessão expirou
-    if (new Date(session.expiresAt) < new Date()) {
+    const expiresAt = new Date(session.expiresAt);
+    const now = new Date();
+
+    if (expiresAt < now) {
+      console.log('DEBUG: Session expired', { expiresAt: expiresAt.toISOString(), now: now.toISOString() });
       logout();
       return null;
     }
 
+    console.log('DEBUG: Session valid', { user: session.user.email });
     return session.user;
   } catch (error) {
     console.error('Erro ao obter usuário:', error);
