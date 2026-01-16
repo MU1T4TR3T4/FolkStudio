@@ -204,7 +204,7 @@ export default function DeliverySignaturePage() {
                                 </Button>
                             </div>
                         ) : (
-                            <Button onClick={() => setIsSignModalOpen(true)} className="w-full bg-[#7D4CDB] hover:bg-[#6b3bb5] text-white h-12 text-lg">
+                            <Button onClick={() => setIsSignModalOpen(true)} className="w-full bg-[#7D4CDB] hover:bg-[#6b3bb5] text-white h-12 text-lg flex justify-center items-center">
                                 <PenTool className="mr-2 h-5 w-5" /> Assinar Recebimento
                             </Button>
                         )}
@@ -214,7 +214,7 @@ export default function DeliverySignaturePage() {
             </main>
 
             <Dialog open={isSignModalOpen} onOpenChange={setIsSignModalOpen}>
-                <DialogContent>
+                <DialogContent className="bg-white">
                     <DialogHeader><DialogTitle>Sua Assinatura</DialogTitle></DialogHeader>
                     <div className="py-4">
                         <div className="border-2 border-dashed border-gray-300 rounded-xl bg-white h-48 relative touch-none overflow-hidden">
