@@ -19,17 +19,7 @@ export default function AdminLogin() {
         e.preventDefault();
         setLoading(true);
 
-        // 1. Tentar Login do Super Admin (Local/Hardcoded)
-        const storedPassword = localStorage.getItem("folk_admin_password") || "admin123";
-        if (username === "admin" && password === storedPassword) {
-            localStorage.setItem("folk_admin_auth", "true");
-            localStorage.setItem("folk_admin_user", username);
-            // Ensure session matches typical structure if possible, but legal admin is distinct
-            toast.success("Login realizado com sucesso!");
-            router.push("/admin/dashboard");
-            setLoading(false);
-            return;
-        }
+
 
         // 2. Tentar Login de Admin do Banco de Dados
         try {
