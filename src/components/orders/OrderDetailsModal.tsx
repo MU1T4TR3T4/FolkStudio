@@ -560,35 +560,41 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                                     {/* Stage 1 Actions are now displayed above via renderStage1Approval */}
 
                                     {order.kanban_stage === 'photolith' && (
-                                        <div className="space-y-6">
-                                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                                                <h4 className="font-bold text-blue-900 mb-3 flex items-center gap-2"><CheckCircle className="h-4 w-4" /> Checklist da Encomenda</h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <label className="flex items-center gap-3 p-3 bg-white rounded-lg cursor-pointer border hover:border-blue-300 shadow-sm"><input type="checkbox" checked={checklistPhotolith.interpretation} onChange={e => setChecklistPhotolith({ ...checklistPhotolith, interpretation: e.target.checked })} className="w-5 h-5 rounded text-blue-600" /><span className="text-gray-700">Interpretação da Arte</span></label>
-                                                    <label className="flex items-center gap-3 p-3 bg-white rounded-lg cursor-pointer border hover:border-blue-300 shadow-sm"><input type="checkbox" checked={checklistPhotolith.order_match} onChange={e => setChecklistPhotolith({ ...checklistPhotolith, order_match: e.target.checked })} className="w-5 h-5 rounded text-blue-600" /><span className="text-gray-700">Encomenda das Camisas (Tamanhos/Cores)</span></label>
-                                                </div>
-                                            </div>
+                                        <div className="space-y-8"> {/* Increased spacing container */}
 
-                                            <div className="border-t pt-4">
+                                            {/* 1. Upload Fotolito (Now First) */}
+                                            <div className="border-b pb-6"> {/* Added border and padding for separation */}
                                                 <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Upload className="h-4 w-4" /> Fotolito</h4>
-                                                <div className="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300 hover:bg-gray-100 transition-colors text-center cursor-pointer relative">
+                                                <div className="bg-gray-50 p-6 rounded-lg border border-dashed border-gray-300 hover:bg-gray-100 transition-colors text-center cursor-pointer relative shadow-sm">
                                                     <input type="file" onChange={e => handleUpload(e, 'photolith')} className="absolute inset-0 opacity-0 cursor-pointer" />
                                                     <div className="flex flex-col items-center gap-2">
-                                                        <Upload className="h-8 w-8 text-gray-400" />
-                                                        <span className="text-sm font-medium text-gray-600">Clique para fazer upload do Fotolito</span>
+                                                        <Upload className="h-10 w-10 text-blue-500 mb-2" />
+                                                        <span className="text-base font-medium text-gray-700">Clique para fazer upload do Fotolito</span>
+                                                        <span className="text-xs text-gray-500">Formatos aceitos: PNG, JPG</span>
                                                     </div>
                                                 </div>
                                                 {files.photolith && (
-                                                    <div className="mt-3 bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2 border border-green-200">
+                                                    <div className="mt-4 bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2 border border-green-200">
                                                         <CheckCircle className="h-5 w-5" /> Arquivo de Fotolito Anexado
                                                     </div>
                                                 )}
                                             </div>
 
-                                            <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
-                                                <label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={checklistPhotolith.photolith_ok} onChange={e => setChecklistPhotolith({ ...checklistPhotolith, photolith_ok: e.target.checked })} className="w-5 h-5 rounded text-yellow-600 focus:ring-yellow-500" /><span className="font-semibold text-yellow-800">Confirmo que o fotolito conferido está correto</span></label>
+                                            {/* 2. Checklist (Now Second) */}
+                                            <div className="bg-blue-50 p-5 rounded-lg border border-blue-100">
+                                                <h4 className="font-bold text-blue-900 mb-4 flex items-center gap-2"><CheckCircle className="h-4 w-4" /> Checklist da Encomenda</h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <label className="flex items-center gap-3 p-3 bg-white rounded-lg cursor-pointer border hover:border-blue-300 shadow-sm transition-all"><input type="checkbox" checked={checklistPhotolith.interpretation} onChange={e => setChecklistPhotolith({ ...checklistPhotolith, interpretation: e.target.checked })} className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" /><span className="text-gray-700 font-medium">Interpretação da Arte</span></label>
+                                                    <label className="flex items-center gap-3 p-3 bg-white rounded-lg cursor-pointer border hover:border-blue-300 shadow-sm transition-all"><input type="checkbox" checked={checklistPhotolith.order_match} onChange={e => setChecklistPhotolith({ ...checklistPhotolith, order_match: e.target.checked })} className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" /><span className="text-gray-700 font-medium">Encomenda (Tamanhos/Cores)</span></label>
+                                                </div>
                                             </div>
-                                            <Button size="lg" className="w-full mt-4 h-12 text-lg flex items-center justify-center" disabled={!canAdvanceFromPhotolith()} onClick={handleAdvanceStage}>
+
+                                            {/* 3. Final Confirmation */}
+                                            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-4">
+                                                <label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={checklistPhotolith.photolith_ok} onChange={e => setChecklistPhotolith({ ...checklistPhotolith, photolith_ok: e.target.checked })} className="w-5 h-5 rounded text-yellow-600 focus:ring-yellow-500" /><span className="font-bold text-yellow-800">Confirmo que o fotolito conferido está correto</span></label>
+                                            </div>
+
+                                            <Button size="lg" className="w-full h-14 text-lg font-bold shadow-md bg-blue-600 hover:bg-blue-700 transition-all" disabled={!canAdvanceFromPhotolith()} onClick={handleAdvanceStage}>
                                                 <ArrowRight className="mr-2 h-5 w-5" /> Concluir Etapa Fotolito e Avançar
                                             </Button>
                                         </div>
