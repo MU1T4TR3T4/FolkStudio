@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Download, CheckCircle, AlertCircle, Package, Clock, Archive, ArrowRight, MessageSquare, Paperclip, ListTodo, History, Eye, Upload, FileText, XCircle, User, Calendar, Edit, Copy } from "lucide-react";
+import { X, Trash2, Download, CheckCircle, AlertCircle, Package, Clock, Archive, ArrowRight, MessageSquare, Paperclip, ListTodo, History, Eye, Upload, FileText, XCircle, User, Calendar, Edit, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { saveImage, getImage } from "@/lib/storage";
@@ -17,11 +17,12 @@ interface OrderDetailsModalProps {
     readOnly?: boolean;
 }
 
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getUserById } from "@/lib/auth";
 
 export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrder, onEditOrder, onDeleteOrder, readOnly = false }: OrderDetailsModalProps) {
     const [returnReason, setReturnReason] = useState("");
     const [showReturnInput, setShowReturnInput] = useState(false);
+    const [creatorName, setCreatorName] = useState("");
 
     // File States (resolved URLs)
     const [files, setFiles] = useState<{
@@ -38,18 +39,82 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
         mockup: null,
     });
 
+    // ... (existing state) ...
+
     const [currentUser, setCurrentUser] = useState<any>(null);
 
     // Initial Load & User
     useEffect(() => {
-        const loadUser = () => {
+        const loadUser = async () => {
             const user = getCurrentUser();
             if (user) setCurrentUser(user);
-            else setCurrentUser({ full_name: 'Usuário' });
+            else setCurrentUser({ full_name: 'Usuário', role: 'vendedor' });
+
+            // Load creator name
+            if (order.created_by) {
+                if (user && user.id === order.created_by) {
+                    setCreatorName("Você (" + user.full_name + ")");
+                } else {
+                    const creator = await getUserById(order.created_by);
+                    if (creator) setCreatorName(creator.full_name);
+                }
+            }
         };
         loadUser();
         resolveImages();
     }, [order]);
+    // ... (rest of the file) ...
+
+    const renderStage1Approval = () => {
+        // Hide if vendor
+        if (currentUser?.role === 'vendedor') return null;
+
+        return (
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
+                {/* ... (existing approval UI) ... */}
+                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-blue-600" /> Aprovação do Pedido
+                </h3>
+
+                {showReturnInput ? (
+                    <div className="space-y-4 bg-red-50 p-4 rounded-lg border border-red-100">
+                        <h4 className="font-semibold text-red-800">Motivo da Devolução</h4>
+                        <textarea
+                            className="w-full p-3 border rounded-lg focus:ring-red-200"
+                            rows={3}
+                            placeholder="Descreva o motivo para devolver ao vendedor..."
+                            value={returnReason}
+                            onChange={e => setReturnReason(e.target.value)}
+                        />
+                        <div className="flex gap-2 justify-end">
+                            <Button variant="outline" onClick={() => setShowReturnInput(false)}>Cancelar</Button>
+                            <Button variant="destructive" onClick={handleReturnOrder}>Confirmar Devolução</Button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <Button
+                            size="lg"
+                            className="flex-1 bg-green-600 hover:bg-green-700 h-16 text-lg shadow-md transition-all hover:-translate-y-0.5"
+                            onClick={handleAdvanceStage}
+                        >
+                            <CheckCircle className="mr-2 h-6 w-6" /> Aprovar Pedido
+                        </Button>
+                        <Button
+                            size="lg"
+                            variant="destructive"
+                            className="flex-1 h-16 text-lg shadow-md transition-all hover:-translate-y-0.5"
+                            onClick={() => setShowReturnInput(true)}
+                        >
+                            <XCircle className="mr-2 h-6 w-6" /> Devolver ao Vendedor
+                        </Button>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    // ...
 
     async function resolveImages() {
         const resolve = async (url?: string | null) => {
@@ -231,49 +296,6 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
         link.click();
         document.body.removeChild(link);
     }
-
-    const renderStage1Approval = () => (
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-blue-600" /> Aprovação do Pedido
-            </h3>
-
-            {showReturnInput ? (
-                <div className="space-y-4 bg-red-50 p-4 rounded-lg border border-red-100">
-                    <h4 className="font-semibold text-red-800">Motivo da Devolução</h4>
-                    <textarea
-                        className="w-full p-3 border rounded-lg focus:ring-red-200"
-                        rows={3}
-                        placeholder="Descreva o motivo para devolver ao vendedor..."
-                        value={returnReason}
-                        onChange={e => setReturnReason(e.target.value)}
-                    />
-                    <div className="flex gap-2 justify-end">
-                        <Button variant="outline" onClick={() => setShowReturnInput(false)}>Cancelar</Button>
-                        <Button variant="destructive" onClick={handleReturnOrder}>Confirmar Devolução</Button>
-                    </div>
-                </div>
-            ) : (
-                <div className="flex flex-col md:flex-row gap-4">
-                    <Button
-                        size="lg"
-                        className="flex-1 bg-green-600 hover:bg-green-700 h-16 text-lg shadow-md transition-all hover:-translate-y-0.5"
-                        onClick={handleAdvanceStage}
-                    >
-                        <CheckCircle className="mr-2 h-6 w-6" /> Aprovar Pedido
-                    </Button>
-                    <Button
-                        size="lg"
-                        variant="destructive"
-                        className="flex-1 h-16 text-lg shadow-md transition-all hover:-translate-y-0.5"
-                        onClick={() => setShowReturnInput(true)}
-                    >
-                        <XCircle className="mr-2 h-6 w-6" /> Devolver ao Vendedor
-                    </Button>
-                </div>
-            )}
-        </div>
-    );
 
 
     // COMPONENTS FOR UI REUSE
@@ -514,9 +536,26 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                                             )}
                                         </>
                                     ) : (
-                                        <div className="bg-gray-50 border border-gray-200 text-gray-600 p-4 rounded-lg flex items-center gap-2">
-                                            <Eye className="h-5 w-5" />
-                                            <span>Modo Visualização: O pedido já está em produção e não pode ser alterado.</span>
+                                        <div className="bg-gray-50 border border-gray-200 text-gray-600 p-4 rounded-lg flex items-center gap-2 justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Eye className="h-5 w-5" />
+                                                <span>Modo Visualização: O pedido já está em produção e não pode ser alterado.</span>
+                                            </div>
+                                            {/* Allow Delete for Admins even if finalized/in production */}
+                                            {onDeleteOrder && currentUser?.role === 'admin' && (
+                                                <Button
+                                                    onClick={() => {
+                                                        if (confirm("ATENÇÃO ADMIN: Tem certeza que deseja EXCLUIR este pedido em produção? Isso pode afetar relatórios.")) {
+                                                            onDeleteOrder(order.id);
+                                                        }
+                                                    }}
+                                                    variant="ghost"
+                                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    size="sm"
+                                                >
+                                                    <Trash2 className="h-4 w-4 mr-1" /> Excluir (Admin)
+                                                </Button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
