@@ -94,9 +94,9 @@ export default function NovoFuncionarioPage() {
                     <ArrowLeft className="h-5 w-5 text-gray-600" />
                 </button>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Novo Funcionário</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Novo Membro</h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        Preencha os dados para cadastrar um novo funcionário
+                        Preencha os dados para cadastrar um novo membro da equipe
                     </p>
                 </div>
             </div>
@@ -157,28 +157,6 @@ export default function NovoFuncionarioPage() {
                         </div>
                     </div>
 
-                    {/* Cargo */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Cargo *
-                        </label>
-                        <div className="relative">
-                            <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                            <select
-                                value={formData.role}
-                                onChange={(e) => setFormData({ ...formData, role: e.target.value as "admin" | "funcionario" })}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-                                required
-                            >
-                                <option value="funcionario">Funcionário</option>
-                                <option value="admin">Administrador</option>
-                            </select>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                            Administradores têm acesso total ao sistema
-                        </p>
-                    </div>
-
                     {/* Senha */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -228,33 +206,6 @@ export default function NovoFuncionarioPage() {
                             </button>
                         </div>
                     </div>
-
-                    {/* Status */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Status
-                        </label>
-                        <div className="flex items-center gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    checked={formData.isActive}
-                                    onChange={() => setFormData({ ...formData, isActive: true })}
-                                    className="text-indigo-600 focus:ring-indigo-500"
-                                />
-                                <span className="text-sm text-gray-700">Ativo</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    checked={!formData.isActive}
-                                    onChange={() => setFormData({ ...formData, isActive: false })}
-                                    className="text-indigo-600 focus:ring-indigo-500"
-                                />
-                                <span className="text-sm text-gray-700">Inativo</span>
-                            </label>
-                        </div>
-                    </div>
                 </div>
 
                 {/* Footer */}
@@ -272,7 +223,7 @@ export default function NovoFuncionarioPage() {
                         className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50"
                     >
                         <Save className="h-4 w-4" />
-                        {loading ? "Salvando..." : "Salvar Funcionário"}
+                        {loading ? "Salvando..." : "Salvar Membro"}
                     </button>
                 </div>
             </form>

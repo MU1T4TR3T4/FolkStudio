@@ -28,8 +28,8 @@ export default function FuncionariosPage() {
         setLoading(true);
         try {
             const data = await getAllUsers();
-            // Filter to show only team/admin, exclude vendedores
-            const teamMembers = data.filter(u => u.role !== 'vendedor');
+            // Filter to show only team, exclude vendedores and admins
+            const teamMembers = data.filter(u => u.role !== 'vendedor' && u.role !== 'admin');
             setEmployees(teamMembers);
             setFilteredEmployees(teamMembers);
         } catch (error) {
@@ -127,7 +127,7 @@ export default function FuncionariosPage() {
     };
 
     const activeEmployees = employees.filter(e => e.is_active).length;
-    const adminCount = employees.filter(e => e.role === "admin").length;
+    // const adminCount = employees.filter(e => e.role === "admin").length; // Removed as admins are filtered out
 
     if (loading) {
         return <div className="p-8 text-center text-gray-500">Carregando equipe...</div>;
@@ -155,7 +155,7 @@ export default function FuncionariosPage() {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-indigo-100 rounded-lg">
@@ -176,18 +176,6 @@ export default function FuncionariosPage() {
                         <div>
                             <p className="text-sm text-gray-600">Ativos</p>
                             <p className="text-2xl font-bold text-gray-900">{activeEmployees}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-purple-100 rounded-lg">
-                            <Users className="h-6 w-6 text-purple-600" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-600">Administradores</p>
-                            <p className="text-2xl font-bold text-gray-900">{adminCount}</p>
                         </div>
                     </div>
                 </div>
@@ -231,8 +219,7 @@ export default function FuncionariosPage() {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
                             >
                                 <option value="todos">Todos os Cargos</option>
-                                <option value="admin">Administrador</option>
-                                {/* Removed Vendedor Option */}
+                                {/* Removed Admin and Vendedor Options */}
                                 <option value="equipe">Equipe</option>
                             </select>
                         </div>
