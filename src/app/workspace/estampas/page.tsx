@@ -2,14 +2,15 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { EstampasContent } from "@/app/dashboard/estampas/page";
+import { getCurrentUser } from "@/lib/auth";
 
 function WorkspaceEstampasContent() {
-    const [user, setUser] = useState<string | undefined>(undefined);
+    const [userId, setUserId] = useState<string | undefined>(undefined);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem("folk_employee_user");
-        if (storedUser) {
-            setUser(storedUser);
+        const user = getCurrentUser();
+        if (user) {
+            setUserId(user.id);
         }
     }, []);
 
@@ -22,11 +23,11 @@ function WorkspaceEstampasContent() {
     // If we want to STRICTLY show only the user's stamps, we should perhaps show nothing until we know the user.
     // However, for simplicity using the same component:
 
-    if (!user) {
+    if (!userId) {
         return <div className="p-8 text-center text-gray-500">Carregando informações do usuário...</div>;
     }
 
-    return <EstampasContent filterUser={user} />;
+    return <EstampasContent filterUser={userId} basePath="/workspace" />;
 }
 
 export default function WorkspaceEstampasPage() {

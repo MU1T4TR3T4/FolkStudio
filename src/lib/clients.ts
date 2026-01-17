@@ -38,7 +38,7 @@ export async function getClients(): Promise<Client[]> {
 
         // Filter by vendor if user is vendedor
         if (currentUser && currentUser.role === 'vendedor') {
-            query = query.eq('created_by_user_id', currentUser.id);
+            query = query.eq('user_id', currentUser.id);
         }
         // Admin and equipe see all clients
 
@@ -208,22 +208,54 @@ export async function updateClient(id: string, updates: Partial<Client>): Promis
 /**
  * Delete a client
  */
-export async function deleteClient(id: string): Promise<boolean> {
+/**
+ * Delete a client
+ */
+export async function deleteClient(id: string): Promise<{ success: boolean; error?: string }> {
     try {
+        // Try Supabase first
         const { error } = await supabase.from('clients').delete().eq('id', id);
-        if (error) throw error;
-        return true;
-    } catch (error) {
+
+        if (error) {
+            // Check for foreign key constraint (error code 23503 in Postgres)
+            if (error.code === '23503') {
+                return { success: false, error: "Este cliente possui pedidos ou registros vinculados e não pode ser excluído." };
+            }
+            throw error;
+        }
+
+        // Also remove from local storage to keep sync
+        try {
+            const saved = localStorage.getItem('folk_studio_clients');
+            if (saved) {
+                const clients: Client[] = JSON.parse(saved);
+                const filtered = clients.filter(c => c.id !== id);
+                localStorage.setItem('folk_studio_clients', JSON.stringify(filtered));
+            }
+        } catch (e) {
+            console.error("Error syncing local storage deletion:", e);
+        }
+
+        return { success: true };
+    } catch (error: any) {
         console.error('Error deleting client:', error);
-        // Fallback
+
+        // If Supabase failed (e.g. offline), try local storage only if it was a local-only client?
+        // Risky if it exists in DB but we are offline.
+        // But for "folk_studio_clients" fallback:
         const saved = localStorage.getItem('folk_studio_clients');
         if (saved) {
             const clients: Client[] = JSON.parse(saved);
-            const filtered = clients.filter(c => c.id !== id);
-            localStorage.setItem('folk_studio_clients', JSON.stringify(filtered));
-            return true;
+            const clientExistsLocally = clients.some(c => c.id === id);
+
+            if (clientExistsLocally) {
+                const filtered = clients.filter(c => c.id !== id);
+                localStorage.setItem('folk_studio_clients', JSON.stringify(filtered));
+                return { success: true };
+            }
         }
-        return false;
+
+        return { success: false, error: error.message || "Erro ao excluir cliente" };
     }
 }
 
@@ -511,4 +543,48 @@ export async function removeClientStamp(id: string): Promise<boolean> {
     }
 
     return success;
+}
+
+/**
+ * Get ALL clients for Admin (ignores role filtering)
+ */
+export async function getAllClientsAdmin(): Promise<Client[]> {
+    let dbClients: Client[] = [];
+    try {
+        const { data, error } = await supabase
+            .from('clients')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        if (data) dbClients = data;
+    } catch (error) {
+        console.error('Error fetching admin clients from DB:', error);
+    }
+
+    // Still checking localStorage for robustness/offline debug
+    let localClients: Client[] = [];
+    try {
+        const saved = localStorage.getItem('folk_studio_clients');
+        if (saved) {
+            localClients = JSON.parse(saved);
+        }
+    } catch (e) {
+        console.error('Error reading localStorage clients:', e);
+    }
+
+    const allClients = [...dbClients];
+    const dbIds = new Set(dbClients.map(c => c.id));
+
+    localClients.forEach(c => {
+        if (!dbIds.has(c.id)) {
+            allClients.push(c);
+        }
+    });
+
+    return allClients.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
+    });
 }

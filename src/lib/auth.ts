@@ -9,6 +9,7 @@ export interface User {
   role: 'admin' | 'vendedor' | 'equipe';
   commission?: number;
   is_active: boolean;
+  avatar_url?: string;
   created_at: string;
   updated_at: string;
 }
@@ -171,7 +172,7 @@ export async function createUser(userData: {
   password: string;
   name: string;
   phone?: string;
-  role: 'vendedor' | 'equipe';
+  role: 'vendedor' | 'equipe' | 'admin';
   commission?: number;
 }): Promise<{ success: boolean; user?: User; error?: string }> {
   try {
@@ -179,7 +180,10 @@ export async function createUser(userData: {
     const currentUser = getCurrentUser();
 
     // Check for super admin (dashboard login)
-    const isSuperAdmin = typeof window !== 'undefined' && localStorage.getItem('folk_admin_auth') === 'true';
+    const isSuperAdmin = typeof window !== 'undefined' && (
+      localStorage.getItem('folk_admin_auth') === 'true' ||
+      localStorage.getItem('folk_superadmin_auth') === 'true'
+    );
 
     if (!isSuperAdmin && (!currentUser || currentUser.role !== 'admin')) {
       return { success: false, error: 'Apenas administradores podem criar usuários' };
@@ -229,7 +233,10 @@ export async function updatePassword(userId: string, newPassword: string): Promi
     const currentUser = getCurrentUser();
 
     // Check for super admin (dashboard login)
-    const isSuperAdmin = typeof window !== 'undefined' && localStorage.getItem('folk_admin_auth') === 'true';
+    const isSuperAdmin = typeof window !== 'undefined' && (
+      localStorage.getItem('folk_admin_auth') === 'true' ||
+      localStorage.getItem('folk_superadmin_auth') === 'true'
+    );
 
     if (!isSuperAdmin && (!currentUser || currentUser.role !== 'admin')) {
       return { success: false, error: 'Apenas administradores podem alterar senhas' };
@@ -264,7 +271,10 @@ export async function toggleUserStatus(userId: string, isActive: boolean): Promi
     const currentUser = getCurrentUser();
 
     // Check for super admin (dashboard login)
-    const isSuperAdmin = typeof window !== 'undefined' && localStorage.getItem('folk_admin_auth') === 'true';
+    const isSuperAdmin = typeof window !== 'undefined' && (
+      localStorage.getItem('folk_admin_auth') === 'true' ||
+      localStorage.getItem('folk_superadmin_auth') === 'true'
+    );
 
     if (!isSuperAdmin && (!currentUser || currentUser.role !== 'admin')) {
       return { success: false, error: 'Apenas administradores podem alterar status de usuários' };
@@ -331,7 +341,10 @@ export async function deleteUser(id: string): Promise<{ success: boolean; error?
   try {
     // Verificar permissão
     const currentUser = getCurrentUser();
-    const isSuperAdmin = typeof window !== 'undefined' && localStorage.getItem('folk_admin_auth') === 'true';
+    const isSuperAdmin = typeof window !== 'undefined' && (
+      localStorage.getItem('folk_admin_auth') === 'true' ||
+      localStorage.getItem('folk_superadmin_auth') === 'true'
+    );
 
     if (!isSuperAdmin && (!currentUser || currentUser.role !== 'admin')) {
       return { success: false, error: 'Apenas administradores podem excluir usuários' };

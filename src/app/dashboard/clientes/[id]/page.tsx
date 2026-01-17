@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { getClientById, Client, getClientStamps, ClientStamp, removeClientStamp } from "@/lib/clients";
+import { getClientById, Client, getClientStamps, ClientStamp, removeClientStamp, deleteClient } from "@/lib/clients";
 import { getAllOrders, Order } from "@/lib/orders";
 import { getImage } from "@/lib/storage";
 import { toast, Toaster } from "sonner";
@@ -213,6 +213,19 @@ export default function ClientDetailsPage() {
 
     if (!client) return null;
 
+    const handleDeleteClient = async () => {
+        if (!client) return;
+        if (confirm("Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.")) {
+            const result = await deleteClient(client.id);
+            if (result.success) {
+                toast.success("Cliente removido com sucesso");
+                router.push("/dashboard/clientes");
+            } else {
+                toast.error(result.error || "Erro ao remover cliente");
+            }
+        }
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <Toaster position="top-right" richColors />
@@ -243,6 +256,9 @@ export default function ClientDetailsPage() {
                     <div className="flex gap-3">
                         <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
                             Editar Dados
+                        </Button>
+                        <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={handleDeleteClient}>
+                            <Trash2 className="h-4 w-4 mr-2" /> Excluir
                         </Button>
                         <Button onClick={handleStartOrder} className="bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200">
                             <Plus className="h-4 w-4 mr-2" /> Novo Pedido

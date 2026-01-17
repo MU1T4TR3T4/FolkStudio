@@ -25,7 +25,7 @@ interface Stamp {
     designBack?: { x: number; y: number; width: number; height: number; rotation: number } | null;
 }
 
-export function EstampasContent({ filterUser }: { filterUser?: string }) {
+export function EstampasContent({ filterUser, basePath = "/dashboard" }: { filterUser?: string; basePath?: string }) {
     const [activeTab, setActiveTab] = useState<"designs" | "models" | "ai" | "uploads">("designs");
     const [designs, setDesigns] = useState<Design[]>([]);
     const [stamps, setStamps] = useState<Stamp[]>([]);
@@ -84,7 +84,7 @@ export function EstampasContent({ filterUser }: { filterUser?: string }) {
             } else {
                 toast.success(`${selectedItems.length} item(s) atribuído(s) ao cliente!`);
             }
-            router.push(`/dashboard/clientes/${clientId}`);
+            router.push(`${basePath}/clientes/${clientId}`);
         } catch (error) {
             console.error(error);
             toast.error("Erro ao atribuir estampas");
@@ -110,9 +110,9 @@ export function EstampasContent({ filterUser }: { filterUser?: string }) {
 
             // Filter by vendor if not admin
             if (currentUser.role === 'vendedor') {
-                queryDesigns = queryDesigns.eq('created_by_user_id', currentUser.id);
+                queryDesigns = queryDesigns.eq('user_id', currentUser.id);
             } else if (filterUser) {
-                queryDesigns = queryDesigns.eq('created_by_user_id', filterUser);
+                queryDesigns = queryDesigns.eq('user_id', filterUser);
             }
 
             const { data: designsData, error: designsError } = await queryDesigns;
@@ -128,9 +128,9 @@ export function EstampasContent({ filterUser }: { filterUser?: string }) {
 
             // Filter by vendor if not admin
             if (currentUser.role === 'vendedor') {
-                queryStamps = queryStamps.eq('created_by_user_id', currentUser.id);
+                queryStamps = queryStamps.eq('user_id', currentUser.id);
             } else if (filterUser) {
-                queryStamps = queryStamps.eq('created_by_user_id', filterUser);
+                queryStamps = queryStamps.eq('user_id', filterUser);
             }
 
             const { data: stampsData, error: stampsError } = await queryStamps;
@@ -219,7 +219,7 @@ export function EstampasContent({ filterUser }: { filterUser?: string }) {
                 name: file.name,
                 image_url: publicUrl,
                 type: 'uploaded',
-                created_by_user_id: currentUser.id, // Save vendor ID
+                user_id: currentUser.id, // Save vendor ID to standard column
                 is_public: false
             });
 
@@ -305,7 +305,7 @@ export function EstampasContent({ filterUser }: { filterUser?: string }) {
             localStorage.setItem("folk_studio_draft_order", JSON.stringify(draftOrder));
             toast.success("Redirecionando para criar pedido...");
 
-            let url = "/dashboard/orders";
+            let url = `${basePath}/orders`; // Use basePath!
             // If selecting for client, pass params to auto-open and assign
             if (clientId && clientName) {
                 url += `?new=true&client_id=${clientId}&client_name=${encodeURIComponent(clientName)}`;
@@ -363,7 +363,7 @@ export function EstampasContent({ filterUser }: { filterUser?: string }) {
             localStorage.setItem("folk_studio_draft_order", JSON.stringify(draftOrder));
             toast.success("Redirecionando para criar pedido...");
 
-            let url = "/dashboard/orders";
+            let url = `${basePath}/orders`; // Use basePath!
             if (clientId && clientName) {
                 url += `?new=true&client_id=${clientId}&client_name=${encodeURIComponent(clientName)}`;
             }
@@ -380,7 +380,7 @@ export function EstampasContent({ filterUser }: { filterUser?: string }) {
         return (
             <div className="text-center py-16 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                 <p className="text-gray-500 mb-4">{message}</p>
-                <Button onClick={() => router.push("/dashboard/studio")}>Ir para o Estúdio</Button>
+                <Button onClick={() => router.push(`${basePath}/studio`)}>Ir para o Estúdio</Button>
             </div>
         );
     }
@@ -406,7 +406,7 @@ export function EstampasContent({ filterUser }: { filterUser?: string }) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => router.push(`/dashboard/clientes/${clientId}`)}
+                            onClick={() => router.push(`${basePath}/clientes/${clientId}`)}
                             className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
                         >
                             Cancelar
@@ -427,7 +427,7 @@ export function EstampasContent({ filterUser }: { filterUser?: string }) {
                     <h1 className="text-3xl font-bold text-gray-900">Minhas Estampas</h1>
                     <p className="text-gray-600 mt-1">Gerencie seus modelos, designs e uploads</p>
                 </div>
-                <Button onClick={() => router.push("/dashboard/studio")} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
+                <Button onClick={() => router.push(`${basePath}/studio`)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
                     <Plus className="h-4 w-4" /> Criar Novo
                 </Button>
             </div>

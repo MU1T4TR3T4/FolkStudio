@@ -1,16 +1,16 @@
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutDashboard, Image as ImageIcon, Palette, ShoppingBag, MessageSquare, Users } from "lucide-react";
+import { LayoutDashboard, Image as ImageIcon, Palette, ShoppingBag, MessageSquare, Users, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
-    { name: "Início", href: "/dashboard", icon: LayoutDashboard },
-    // { name: "Minhas Artes", href: "/dashboard/designs", icon: ImageIcon },
-    { name: "Criar Arte", href: "/dashboard/studio", icon: Palette },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Produção", href: "/dashboard/production", icon: ClipboardList },
     { name: "Pedidos", href: "/dashboard/orders", icon: ShoppingBag },
-    { name: "Minhas Estampas", href: "/dashboard/estampas", icon: ImageIcon },
     { name: "Clientes", href: "/dashboard/clientes", icon: Users },
-    { name: "Chat", href: "/dashboard/chat", icon: MessageSquare },
+    { name: "Criar Estampas", href: "/dashboard/studio", icon: Palette },
+    { name: "Minhas Estampas", href: "/dashboard/estampas", icon: ImageIcon },
+    // { name: "Chat", href: "/dashboard/chat", icon: MessageSquare },
 ];
 
 export function Sidebar() {

@@ -6,29 +6,59 @@ import { Button } from "@/components/ui/button";
 import { toast, Toaster } from "sonner";
 import { Lock, User, Shield } from "lucide-react";
 import Image from "next/image";
+import { login } from "@/lib/auth";
 
-export default function AdminLoginPage() {
+export default function AdminLogin() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
-        // Autenticação exclusiva para administradores
-        setTimeout(() => {
-            if (username === "admin" && password === "admin123") {
-                localStorage.setItem("folk_admin_auth", "true");
-                localStorage.setItem("folk_admin_user", username);
-                toast.success("Login realizado com sucesso!");
-                router.push("/admin/dashboard");
-            } else {
-                toast.error("Usuário ou senha incorretos");
-            }
+        // 1. Tentar Login do Super Admin (Local/Hardcoded)
+        const storedPassword = localStorage.getItem("folk_admin_password") || "admin123";
+        if (username === "admin" && password === storedPassword) {
+            localStorage.setItem("folk_admin_auth", "true");
+            localStorage.setItem("folk_admin_user", username);
+            // Ensure session matches typical structure if possible, but legal admin is distinct
+            toast.success("Login realizado com sucesso!");
+            router.push("/admin/dashboard");
             setLoading(false);
-        }, 500);
+            return;
+        }
+
+        // 2. Tentar Login de Admin do Banco de Dados
+        try {
+            const { success, user, error } = await login(username, password);
+
+            if (success && user) {
+                if (user.role === 'admin') {
+                    // Configurar sessão administrativa
+                    localStorage.setItem("folk_admin_auth", "true");
+                    localStorage.setItem("folk_admin_user", user.full_name);
+                    localStorage.setItem("folk_admin_display_name", user.full_name);
+                    if (user.avatar_url) {
+                        localStorage.setItem("folk_admin_avatar", user.avatar_url);
+                    }
+
+                    toast.success("Login realizado com sucesso!");
+                    router.push("/admin/dashboard");
+                } else {
+                    toast.error("Este usuário não tem permissão de administrador.");
+                }
+            } else {
+                toast.error(error || "Usuário ou senha incorretos");
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error("Erro ao processar login.");
+        }
+
+        setLoading(false);
     };
 
     return (

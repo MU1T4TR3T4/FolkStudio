@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getOrdersByUser, Order } from "@/lib/orders";
-import { getCurrentUser } from "@/lib/auth";
+import { getAllOrders, Order, updateOrderStatus as updateStatusInDb, updateOrder } from "@/lib/orders";
 import { OrderDetailsModal } from "@/components/orders/OrderDetailsModal";
 import { NewOrderForm } from "@/components/orders/NewOrderForm";
 import { Button } from "@/components/ui/button";
-import { Search, Eye, Filter, Plus } from "lucide-react";
+import { Search, Eye, Plus, ShoppingBag } from "lucide-react";
+import { toast, Toaster } from "sonner";
 
-export default function OrdersListPage() {
+export default function AdminOrdersListPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
@@ -26,15 +26,13 @@ export default function OrdersListPage() {
 
     async function loadData() {
         setLoading(true);
-        const user = getCurrentUser();
-        if (!user) return;
-
         try {
-            const data = await getOrdersByUser(user.id);
+            const data = await getAllOrders();
             setOrders(data);
             setFilteredOrders(data);
         } catch (error) {
             console.error(error);
+            toast.error("Erro ao carregar pedidos");
         } finally {
             setLoading(false);
         }
@@ -51,6 +49,31 @@ export default function OrdersListPage() {
             o.customer_name?.toLowerCase().includes(term)
         ));
     }
+
+    const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+        const success = await updateStatusInDb(orderId, newStatus, "Administrador");
+        if (success) {
+            toast.success("Status atualizado");
+            // Update local state to reflect change
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, kanban_stage: newStatus as any } : o));
+            if (selectedOrder?.id === orderId) {
+                setSelectedOrder(prev => prev ? { ...prev, kanban_stage: newStatus as any } : null);
+            }
+        } else {
+            toast.error("Erro ao atualizar status");
+        }
+    };
+
+    const handleUpdateOrder = async (updated: Order) => {
+        try {
+            await updateOrder(updated.id, updated);
+            setOrders(prev => prev.map(o => o.id === updated.id ? updated : o));
+            setSelectedOrder(updated);
+            toast.success("Pedido atualizado");
+        } catch (error) {
+            toast.error("Erro ao atualizar pedido");
+        }
+    };
 
     // Helper for Status Badge
     const StatusBadge = ({ stage }: { stage?: string }) => {
@@ -76,13 +99,13 @@ export default function OrdersListPage() {
 
     return (
         <div className="space-y-6">
+            <Toaster position="top-right" richColors />
+
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Meus Pedidos</h1>
-                    <p className="text-sm text-gray-500">Lista dos pedidos criados por você</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Todos os Pedidos</h1>
+                    <p className="text-sm text-gray-500">Lista completa de todos os pedidos do sistema</p>
                 </div>
-                {/* Optional: Add New Order button here if desired on this page too */}
-                {/* User usually creates via 'Criar Arte' or New Order flow elsewhere, but having a button is handy */}
                 <Button onClick={() => setShowNewOrderForm(true)} className="bg-blue-600 hover:bg-blue-700">
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Pedido
@@ -154,12 +177,14 @@ export default function OrdersListPage() {
                 )}
             </div>
 
-            {/* View Modal */}
+            {/* View Modal with Admin Permissions */}
             {selectedOrder && (
                 <OrderDetailsModal
                     order={selectedOrder}
                     onClose={() => setSelectedOrder(null)}
-                    readOnly={false} // Allow edits if policy permits
+                    onUpdateStatus={handleUpdateStatus}
+                    onUpdateOrder={handleUpdateOrder}
+                    readOnly={false}
                 />
             )}
 

@@ -30,17 +30,21 @@ export interface Order {
     ad2?: number;
     ad3: number;
     ad4: number;
-    // Local fields for compatibility
+    // DB Fields
+    image_url?: string;
+    back_image_url?: string;
+    logo_front_url?: string;
+    logo_back_url?: string;
+    pdf_url?: string;
+
+    // Deprecated / Local fields (keep for compatibility if needed)
     imageUrl?: string;
-    image_url?: string; // DB field
     backImageUrl?: string;
     logoFrontUrl?: string;
     logoBackUrl?: string;
+    pdfUrl?: string;
     designFront?: any;
     designBack?: any;
-
-    pdfUrl?: string;
-    pdf_url?: string; // DB field
     created_by?: string;
 
     // Kanban V2
@@ -442,6 +446,31 @@ export async function getActivityLogsByUser(userId: string, userName: string): P
         if (savedLogs) {
             const logs = JSON.parse(savedLogs);
             return logs.filter((l: any) => l.user === userName || l.user === userId);
+        }
+        return [];
+    }
+}
+
+/**
+ * Get orders by client ID
+ */
+export async function getOrdersByClientId(clientId: string): Promise<Order[]> {
+    try {
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('client_id', clientId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return (data as Order[]) || [];
+    } catch (error) {
+        console.error('Error fetching client orders:', error);
+        // Fallback to localStorage
+        const saved = localStorage.getItem('folk_studio_orders');
+        if (saved) {
+            const orders: Order[] = JSON.parse(saved);
+            return orders.filter(o => o.client_id === clientId);
         }
         return [];
     }

@@ -26,6 +26,9 @@ export default function ClientsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<Client | null>(null);
 
+    // Delete confirmation state
+    const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+
     useEffect(() => {
         loadClients();
     }, []);
@@ -49,11 +52,25 @@ export default function ClientsPage() {
         client.company_name?.toLowerCase().includes(search.toLowerCase())
     );
 
-    const handleDelete = async (id: string) => {
-        if (confirm("Tem certeza que deseja excluir este cliente?")) {
-            await deleteClient(id);
-            toast.success("Cliente removido");
-            loadClients();
+    const checkAndDelete = (client: Client) => {
+        setClientToDelete(client);
+    };
+
+    const confirmDelete = async () => {
+        if (!clientToDelete) return;
+
+        try {
+            const result = await deleteClient(clientToDelete.id);
+            if (result.success) {
+                toast.success("Cliente removido");
+                loadClients();
+            } else {
+                toast.error(result.error || "Erro ao remover cliente");
+            }
+        } catch (error) {
+            toast.error("Erro ao processar exclusão");
+        } finally {
+            setClientToDelete(null);
         }
     };
 
@@ -68,11 +85,6 @@ export default function ClientsPage() {
     };
 
     const handleViewDetails = (client: Client) => {
-        // We will implement details view in a separate component/route or query param
-        // For now let's use query param to keep it simple within the same page or redirect if we make a sub-page
-        // Actually, user asked for: "option to assign stamp", "start order", "list orders".
-        // A modal or a side-sheet details view works well, or a dedicated page.
-        // Let's assume we implement a dedicated details page for cleaner structure: /dashboard/clients/[id]
         router.push(`/dashboard/clientes/${client.id}`);
     };
 
@@ -169,7 +181,7 @@ export default function ClientsPage() {
                                                 <FileText className="mr-2 h-4 w-4" /> Editar
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem className="text-red-600" onClick={(e) => { e.stopPropagation(); handleDelete(client.id); }}>
+                                            <DropdownMenuItem className="text-red-600 bg-red-50 focus:bg-red-100 mt-1" onClick={(e) => { e.stopPropagation(); checkAndDelete(client); }}>
                                                 Excluir
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
@@ -217,6 +229,27 @@ export default function ClientsPage() {
                 onSuccess={loadClients}
                 client={editingClient}
             />
+
+            {/* Delete Confirmation Dialog */}
+            {clientToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">Excluir Cliente</h3>
+                        <p className="text-gray-500 mb-6">
+                            Tem certeza que deseja excluir <strong>{clientToDelete.name}</strong>?
+                            Esta ação não pode ser desfeita.
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <Button variant="outline" onClick={() => setClientToDelete(null)}>
+                                Cancelar
+                            </Button>
+                            <Button variant="destructive" onClick={confirmDelete}>
+                                Confirmar Exclusão
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

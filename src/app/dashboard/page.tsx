@@ -1,9 +1,7 @@
 "use client";
 
-import MockupSelector from "@/components/dashboard/MockupSelector";
+import { VendorDashboardOverview } from "@/components/dashboard/VendorDashboardOverview";
 
 export default function DashboardPage() {
-    return (
-        <MockupSelector basePath="/dashboard/studio" />
-    );
+    return <VendorDashboardOverview />;
 }

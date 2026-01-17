@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Rnd } from "react-rnd";
 import html2canvas from "html2canvas";
 import { supabase } from "@/lib/supabase";
+import { getCurrentUser } from "@/lib/auth";
 import "@/app/fonts.css";
 import CropModal from "@/components/CropModal";
 
@@ -556,14 +557,20 @@ export function StudioContent() {
             if (uploadError) { console.error('Upload error:', uploadError); toast.error("Erro ao fazer upload da imagem."); return; }
             const { data: { publicUrl } } = supabase.storage.from('designs').getPublicUrl(fileName);
 
-            // Get workspace user if available
-            const workspaceUser = localStorage.getItem("folk_employee_user");
+            // Get workspace user if available (use real UUID)
+            const currentUser = getCurrentUser();
+            const userId = currentUser?.id;
+
+            if (!userId) {
+                toast.error("Erro de autenticação: Usuário não identificado");
+                return;
+            }
 
             if (editDesignId) {
                 const { error } = await supabase.from('designs').update({
                     mockup_image: mockupImage, product_type: productType, color: color,
                     elements: elements, final_image_url: publicUrl,
-                    created_by_user: workspaceUser || 'admin' // Default to admin for dashboard
+                    created_by_user_id: userId // Send UUID
                 }).eq('id', editDesignId);
                 if (error) throw error;
                 toast.success("Design atualizado com sucesso!");
@@ -571,7 +578,7 @@ export function StudioContent() {
                 const { error } = await supabase.from('designs').insert({
                     mockup_image: mockupImage, product_type: productType, color: color,
                     elements: elements, final_image_url: publicUrl,
-                    created_by_user: workspaceUser || 'admin'
+                    created_by_user_id: userId // Send UUID
                 });
                 if (error) throw error;
                 toast.success("Design salvo com sucesso!");
@@ -756,10 +763,37 @@ export function StudioContent() {
     );
 }
 
+import MockupSelector from "@/components/dashboard/MockupSelector";
+
+// ... (keep StudioContent as is, but renamed/internal if needed, or just kept)
+// We need to keep StudioContent but modify the default export.
+
+/* 
+   Keep StudioContent EXACTLY as it is above this point. 
+   I will only replace the default export at the bottom.
+*/
+
+function StudioWrapper() {
+    const searchParams = useSearchParams();
+    // Check if we have base requirements to start editing: mockup, or edit_design_id
+    const hasMockup = searchParams.has("mockup");
+    const isEditing = searchParams.has("edit_design_id");
+
+    if (hasMockup || isEditing) {
+        return <StudioContent />;
+    }
+
+    return (
+        <div className="container mx-auto py-8">
+            <MockupSelector basePath="/dashboard/studio" />
+        </div>
+    );
+}
+
 export default function CanvaEditorPage() {
     return (
         <Suspense fallback={<div className="flex items-center justify-center h-screen bg-gray-50"><div className="text-center"><div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#7D4CDB] mb-4"></div><p className="text-lg text-gray-600">Carregando estúdio...</p></div></div>}>
-            <StudioContent />
+            <StudioWrapper />
         </Suspense>
     );
 }

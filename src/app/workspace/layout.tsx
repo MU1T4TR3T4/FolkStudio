@@ -24,26 +24,26 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [employeeUser, setEmployeeUser] = useState("");
+    const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
-        const user = getCurrentUser();
+        const currentUser = getCurrentUser();
 
-        if (!user) {
+        if (!currentUser) {
             router.push('/login');
             setLoading(false);
             return;
         }
 
         // Verificar se usuário tem permissão para acessar workspace (equipe ou admin)
-        if (user.role !== 'equipe' && user.role !== 'admin') {
+        if (currentUser.role !== 'equipe' && currentUser.role !== 'admin') {
             router.push('/login');
             setLoading(false);
             return;
         }
 
         setIsAuthenticated(true);
-        setEmployeeUser(user.full_name);
+        setUser(currentUser);
         setLoading(false);
     }, [pathname, router]);
 
@@ -53,10 +53,14 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         router.push("/login");
     };
 
+    const handleProfileClick = () => {
+        router.push("/workspace/perfil");
+    };
+
     const menuItems = [
         { icon: LayoutDashboard, label: "Dashboard", href: "/workspace/dashboard" },
-        { icon: Package, label: "Pedidos", href: "/workspace/pedidos" },
-        { icon: BarChart3, label: "Produção", href: "/workspace/producao" },
+        { icon: Package, label: "Produção", href: "/workspace/pedidos" },
+        { icon: BarChart3, label: "Pedidos", href: "/workspace/producao" },
         { icon: Palette, label: "Estampas", href: "/workspace/estampas" },
         { icon: PenTool, label: "Criar Estampa", href: "/workspace/studio" },
     ];
@@ -74,11 +78,11 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
             <Toaster position="top-right" richColors />
 
             {/* Mobile Header */}
-            <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+            <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
                 <h1 className="text-lg font-bold text-gray-900">Workspace</h1>
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -96,23 +100,22 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
             `}>
                 <div className="h-full flex flex-col">
                     {/* Logo */}
-                    <div className="p-6 border-b border-gray-200">
+                    <div className="p-6 border-b border-gray-200 flex justify-center">
                         <Image
                             src="/logo/folk-logo-sem-fundo1.png"
                             alt="FOLK Logo"
-                            width={120}
-                            height={48}
-                            className="object-contain mb-2"
+                            width={140}
+                            height={56}
+                            className="object-contain"
                         />
-                        <p className="text-sm text-gray-500 mt-1">Olá, {employeeUser}</p>
-                        <p className="text-xs text-gray-400">Funcionário</p>
                     </div>
 
                     {/* Menu */}
-                    <nav className="flex-1 p-4 space-y-2">
+                    <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                         {menuItems.map((item) => {
                             const Icon = item.icon;
-                            const isActive = pathname === item.href;
+                            // Check exact match or starts with for sub-routes
+                            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
 
                             return (
                                 <Link
@@ -120,14 +123,14 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                                     href={item.href}
                                     onClick={() => setSidebarOpen(false)}
                                     className={`
-                                        flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
+                                        flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
                                         ${isActive
-                                            ? 'bg-purple-100/30 text-purple-900 font-semibold'
-                                            : 'text-gray-700 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-purple-700 font-medium shadow-sm'
+                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                         }
                                     `}
                                 >
-                                    <Icon className="h-5 w-5" />
+                                    <Icon className={`h-5 w-5 ${isActive ? 'text-purple-700' : 'text-gray-400 group-hover:text-gray-600'}`} />
                                     {item.label}
                                 </Link>
                             );
@@ -135,14 +138,14 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                     </nav>
 
                     {/* Logout */}
-                    <div className="p-4 border-t border-gray-200">
+                    <div className="p-4 border-t border-gray-200 bg-gray-50/50">
                         <Button
                             onClick={handleLogout}
-                            variant="outline"
-                            className="w-full justify-start gap-3"
+                            variant="ghost"
+                            className="w-full justify-start gap-3 text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
                             <LogOut className="h-5 w-5" />
-                            Sair
+                            Sair do Sistema
                         </Button>
                     </div>
                 </div>
@@ -156,10 +159,46 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                 />
             )}
 
-            {/* Main Content */}
-            <main className="lg:ml-64 p-6">
-                {children}
-            </main>
+            {/* Main Content Area */}
+            <div className="lg:ml-64 min-h-screen flex flex-col">
+                {/* Desktop Header with Profile */}
+                <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-200 px-6 py-3 flex justify-end items-center shadow-sm">
+                    {/* Profile Section */}
+                    <div className="flex items-center gap-3 pl-4 border-l border-gray-200 ml-4">
+                        <div className="text-right hidden md:block">
+                            <p className="text-sm font-semibold text-gray-900 leading-tight">
+                                {user?.full_name || "Usuário"}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                                {user?.role === 'admin' ? 'Administrador' : 'Equipe'}
+                            </p>
+                        </div>
+
+                        <button
+                            onClick={handleProfileClick}
+                            className="relative flex h-10 w-10 items-center justify-center rounded-full overflow-hidden bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-md ring-2 ring-transparent hover:ring-purple-200 transition-all active:scale-95"
+                            title="Meu Perfil"
+                        >
+                            {user?.avatar_url ? (
+                                <img
+                                    src={user.avatar_url}
+                                    alt="Avatar"
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <span className="text-sm font-bold">
+                                    {user?.full_name?.charAt(0).toUpperCase() || "U"}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                </header>
+
+                {/* Page Content */}
+                <main className="flex-1 p-6 md:p-8">
+                    {children}
+                </main>
+            </div>
         </div>
     );
 }
