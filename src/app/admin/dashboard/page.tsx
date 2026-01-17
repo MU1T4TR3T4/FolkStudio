@@ -75,7 +75,7 @@ export default function AdminDashboardPage() {
             const novos = ordersData.filter(o => !o.kanban_stage || o.kanban_stage === "waiting_confirmation").length;
             const producao = ordersData.filter(o => ['photolith', 'waiting_arrival', 'customization'].includes(o.kanban_stage || '')).length;
             const prontos = ordersData.filter(o => o.kanban_stage === "delivery").length; // "Ready for delivery"
-            const concluidos = ordersData.filter(o => o.kanban_stage === "finalized" || o.kanban_stage === "delivered").length;
+            const concluidos = ordersData.filter(o => o.kanban_stage === "finalized").length;
 
             // Pedidos de hoje
             const today = new Date();
@@ -142,7 +142,7 @@ export default function AdminDashboardPage() {
             { name: 'Novo', value: orders.filter(o => !o.kanban_stage || o.kanban_stage === 'waiting_confirmation').length },
             { name: 'Em Produção', value: orders.filter(o => ['photolith', 'waiting_arrival', 'customization'].includes(o.kanban_stage || '')).length },
             { name: 'Pronto', value: orders.filter(o => o.kanban_stage === 'delivery').length },
-            { name: 'Entregue', value: orders.filter(o => o.kanban_stage === 'finalized' || o.kanban_stage === 'delivered').length },
+            { name: 'Entregue', value: orders.filter(o => o.kanban_stage === 'finalized').length },
         ].filter(item => item.value > 0);
 
         setChartData({
@@ -167,8 +167,8 @@ export default function AdminDashboardPage() {
     }
 
     const handleStatClick = (category: string) => {
-        let filteredOrders = [];
-        let filteredClients = [];
+        let filteredOrders: Order[] = [];
+        let filteredClients: Client[] = [];
         let title = "";
         let type: 'orders' | 'clients' = 'orders';
 
