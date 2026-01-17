@@ -475,12 +475,7 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
 
                         {/* 1. Status & Actions */}
                         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                <ListTodo className="h-5 w-5 text-blue-600" />
-                                {order.kanban_stage === 'waiting_confirmation' ? 'Detalhes do Pedido' :
-                                    order.kanban_stage === 'returned' ? 'ATENÇÃO: DEVOLVIDO' :
-                                        `Etapa Atual: ${stages.find(s => s.id === order.kanban_stage)?.label || order.kanban_stage}`}
-                            </h3>
+
 
                             {/* Vendor/ReadOnly Logic */}
                             {readOnly ? (
@@ -747,10 +742,13 @@ export function OrderDetailsModal({ order, onClose, onUpdateStatus, onUpdateOrde
                                             })}
                                         </div>
                                     </div>
-                                    {order.product_type && (
+                                    {creatorName && (
                                         <div>
-                                            <p className="text-xs text-gray-500 uppercase font-semibold">Detalhes</p>
-                                            <p className="text-sm text-gray-700">{order.product_type} - {order.color} - {order.quantity}un</p>
+                                            <p className="text-xs text-gray-500 uppercase font-semibold">Vendedor</p>
+                                            <div className="font-medium text-gray-900 flex items-center gap-2">
+                                                <User className="h-4 w-4 text-gray-400" />
+                                                {creatorName}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
