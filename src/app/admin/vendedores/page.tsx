@@ -210,9 +210,6 @@ export default function AdminVendedoresPage() {
                                     Telefone
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Comissão
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -226,7 +223,7 @@ export default function AdminVendedoresPage() {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {filteredVendedores.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                                         {searchTerm || filterBy !== "all"
                                             ? "Nenhum vendedor encontrado com os filtros aplicados"
                                             : "Nenhum vendedor cadastrado. Clique em 'Adicionar Vendedor' para começar."}
@@ -271,11 +268,7 @@ export default function AdminVendedoresPage() {
                                                 {vendedor.phone}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                {vendedor.commission}%
-                                            </span>
-                                        </td>
+                                        {/* Commission removed */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${vendedor.is_active
                                                 ? 'bg-green-100 text-green-800'

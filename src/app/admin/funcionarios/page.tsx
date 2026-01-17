@@ -28,12 +28,13 @@ export default function FuncionariosPage() {
         setLoading(true);
         try {
             const data = await getAllUsers();
-            // Filter to show only team/admin, exclude just in case
-            setEmployees(data);
-            setFilteredEmployees(data);
+            // Filter to show only team/admin, exclude vendedores
+            const teamMembers = data.filter(u => u.role !== 'vendedor');
+            setEmployees(teamMembers);
+            setFilteredEmployees(teamMembers);
         } catch (error) {
             console.error("Erro ao carregar funcionários:", error);
-            toast.error("Erro ao carregar funcionários");
+            toast.error("Erro ao carregar equipe");
         } finally {
             setLoading(false);
         }
@@ -70,19 +71,19 @@ export default function FuncionariosPage() {
         const employee = employees.find(e => e.id === id);
         if (!employee) return;
 
-        if (!confirm(`Excluir funcionário ${employee.full_name}? esta ação não pode ser desfeita.`)) return;
+        if (!confirm(`Excluir membro da equipe ${employee.full_name}? esta ação não pode ser desfeita.`)) return;
 
         try {
             const result = await deleteUser(id);
             if (result.success) {
-                toast.success("Funcionário excluído com sucesso!");
+                toast.success("Membro excluído com sucesso!");
                 loadEmployees();
             } else {
                 toast.error(result.error);
             }
         } catch (error) {
             console.error("Erro ao excluir:", error);
-            toast.error("Erro ao excluir funcionário");
+            toast.error("Erro ao excluir membro");
         }
     }
 
@@ -90,7 +91,7 @@ export default function FuncionariosPage() {
         try {
             const result = await toggleUserStatus(id, !currentStatus);
             if (result.success) {
-                toast.success(`Funcionário ${!currentStatus ? 'ativado' : 'desativado'} com sucesso!`);
+                toast.success(`Membro ${!currentStatus ? 'ativado' : 'desativado'} com sucesso!`);
                 loadEmployees();
             } else {
                 toast.error(result.error);
@@ -108,7 +109,7 @@ export default function FuncionariosPage() {
             </span>
         ) : (
             <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                Funcionário
+                Equipe
             </span>
         );
     };
@@ -139,9 +140,9 @@ export default function FuncionariosPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Gestão de Funcionários</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Gestão de Equipe</h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        Gerencie funcionários e suas permissões
+                        Gerencie a equipe e suas permissões
                     </p>
                 </div>
                 <button
@@ -149,7 +150,7 @@ export default function FuncionariosPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
                 >
                     <Plus className="h-4 w-4" />
-                    Novo Funcionário
+                    Novo Membro
                 </button>
             </div>
 
@@ -161,7 +162,7 @@ export default function FuncionariosPage() {
                             <Users className="h-6 w-6 text-indigo-600" />
                         </div>
                         <div>
-                            <p className="text-sm text-gray-600">Total de Funcionários</p>
+                            <p className="text-sm text-gray-600">Total da Equipe</p>
                             <p className="text-2xl font-bold text-gray-900">{employees.length}</p>
                         </div>
                     </div>
@@ -231,7 +232,7 @@ export default function FuncionariosPage() {
                             >
                                 <option value="todos">Todos os Cargos</option>
                                 <option value="admin">Administrador</option>
-                                <option value="vendedor">Vendedor</option>
+                                {/* Removed Vendedor Option */}
                                 <option value="equipe">Equipe</option>
                             </select>
                         </div>

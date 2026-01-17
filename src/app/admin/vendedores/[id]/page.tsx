@@ -138,20 +138,12 @@ export default function VendorDetailsPage() {
                     </div>
                 </div>
 
-                {vendor.commission && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                        <div className="flex items-center gap-2">
-                            <TrendingUp className="h-4 w-4 text-gray-600" />
-                            <span className="text-sm text-gray-600">Comissão:</span>
-                            <span className="font-semibold text-gray-900">{vendor.commission}%</span>
-                        </div>
-                    </div>
-                )}
+                {/* Commission section removed */}
 
                 <div className="mt-4 pt-4 border-t border-gray-200">
                     <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${vendor.is_active
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
                         }`}>
                         {vendor.is_active ? 'Ativo' : 'Inativo'}
                     </span>
@@ -215,8 +207,8 @@ export default function VendorDetailsPage() {
                     <button
                         onClick={() => setActiveTab("estampas")}
                         className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "estampas"
-                                ? "border-purple-600 text-purple-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            ? "border-purple-600 text-purple-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                             }`}
                     >
                         <Image className="h-4 w-4" />
@@ -225,8 +217,8 @@ export default function VendorDetailsPage() {
                     <button
                         onClick={() => setActiveTab("clientes")}
                         className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "clientes"
-                                ? "border-blue-600 text-blue-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            ? "border-blue-600 text-blue-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                             }`}
                     >
                         <Users className="h-4 w-4" />
@@ -235,8 +227,8 @@ export default function VendorDetailsPage() {
                     <button
                         onClick={() => setActiveTab("pedidos")}
                         className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "pedidos"
-                                ? "border-green-600 text-green-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            ? "border-green-600 text-green-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                             }`}
                     >
                         <ShoppingCart className="h-4 w-4" />
@@ -245,8 +237,8 @@ export default function VendorDetailsPage() {
                     <button
                         onClick={() => setActiveTab("designs")}
                         className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "designs"
-                                ? "border-orange-600 text-orange-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            ? "border-orange-600 text-orange-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                             }`}
                     >
                         <Upload className="h-4 w-4" />
@@ -358,8 +350,8 @@ export default function VendorDetailsPage() {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                                                                order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                                                    'bg-yellow-100 text-yellow-800'
+                                                            order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                                                'bg-yellow-100 text-yellow-800'
                                                             }`}>
                                                             {order.status}
                                                         </span>
