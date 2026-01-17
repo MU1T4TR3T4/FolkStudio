@@ -50,7 +50,7 @@ export default function SuperAdminLogin() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all placeholder:text-slate-600"
-                                placeholder="dev.superadm@folk.com"
+                                placeholder=""
                                 required
                             />
                         </div>
@@ -67,7 +67,7 @@ export default function SuperAdminLogin() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full pl-10 pr-10 py-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all placeholder:text-slate-600"
-                                placeholder="••••••••"
+                                placeholder=""
                                 required
                             />
                             <button

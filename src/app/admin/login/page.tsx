@@ -125,11 +125,7 @@ export default function AdminLogin() {
                     </Button>
                 </form>
 
-                <div className="mt-6 text-center">
-                    <p className="text-xs text-gray-500">
-                        Demo: admin / admin123
-                    </p>
-                </div>
+
             </div>
         </div>
     );
